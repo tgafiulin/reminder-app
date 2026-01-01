@@ -1,29 +1,34 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Reminder } from "./types";
 
 import "./RemindersPage.css";
-
-const initialReminders: Reminder[] = [
-  { id: "1", title: "Купить молоко" },
-  { id: "2", title: "Позвонить другу" },
-];
+import { loadReminders, saveReminders } from "./api/storage";
 
 export function RemindersPage() {
-  const [reminders, setReminders] = useState<Reminder[]>(initialReminders);
+  const [reminders, setReminders] = useState<Reminder[]>(() => {
+    const fromStorage = loadReminders();
+    return fromStorage.length > 0 ? fromStorage : [];
+  });
   const [title, setTitle] = useState("");
 
   const addNewReminder = () => {
     if (title.trim().length === 0) return;
 
-    setReminders([
+    const updatedRemiders = [
       ...reminders,
       {
         id: crypto.randomUUID(),
         title: title,
       },
-    ]);
+    ];
+
+    setReminders(updatedRemiders);
     setTitle("");
   };
+
+  useEffect(() => {
+    saveReminders(reminders);
+  }, [reminders]);
 
   return (
     <div className="reminders-page">
