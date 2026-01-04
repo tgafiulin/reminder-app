@@ -49,6 +49,33 @@ describe("reminders storage", () => {
     ]);
   });
 
+  it("renders description and media link when provide", async () => {
+    const user = userEvent.setup();
+
+    render(<RemindersPage />);
+
+    const input = screen.getByPlaceholderText(/Новое напоминание/i);
+    const textarea = screen.getByPlaceholderText(/Описание/i);
+    const urlInput = screen.getByPlaceholderText(/Ссылка на медиа/i);
+    const button = screen.getByRole("button", { name: /добавить/i });
+
+    const title = "Проверка сохранения в localStorage";
+    const description = "Необязательное описание";
+    const url = "http://localhost:5173/";
+
+    await user.type(input, title);
+    await user.type(textarea, description);
+    await user.type(urlInput, url);
+    await user.click(button);
+
+    // в UI появился новый элемент
+    expect(screen.getByText(title)).toBeInTheDocument();
+    expect(screen.getByText(description)).toBeInTheDocument();
+
+    const mediaLink = screen.getByRole("link", { name: /открыть медиа/i });
+    expect(mediaLink).toHaveAttribute("href", url);
+  });
+
   afterEach(() => {
     localStorage.clear();
   });

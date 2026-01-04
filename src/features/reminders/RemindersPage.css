@@ -1,66 +1,173 @@
 .reminders-page {
-  max-width: 600px;
+  background: #f3f4f6;
+  padding: 32px 16px;
+}
+
+.reminders-page__container {
   margin: 0 auto;
-  padding: 24px 16px;
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
+  display: flex;
+  gap: 24px; /* было 32px */
+  align-items: flex-start;
 }
 
+/* Заголовок Remindy наверху страницы — если есть отдельный класс */
 .reminders-page__title {
-  font-size: 24px;
-  font-weight: 600;
-  margin-bottom: 16px;
-}
-
-.reminders-page section {
+  font-size: 32px;
+  font-weight: 700;
+  text-align: center;
   margin-bottom: 24px;
 }
 
+/* Левая колонка: форма */
 .reminders-page__form {
-  display: flex;
-  gap: 8px;
-}
-
-.reminders-page__input {
-  flex: 1;
-  padding: 8px 10px;
-  border-radius: 4px;
-  border: 1px solid #d0d0d0;
-  font-size: 14px;
-}
-
-.reminders-page__button {
-  padding: 8px 12px;
-  border-radius: 4px;
-  border: none;
-  background-color: #2563eb;
-  color: #ffffff;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.reminders-page__button:disabled {
-  background-color: #9ca3af;
-  cursor: default;
-}
-
-.reminders-page__list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px 16px 12px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 320px;
 }
 
-.reminders-page__item {
+/* Правая колонка: заголовок + список */
+.reminders-page__right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex-grow: 1;
+}
+
+/* Заголовок формы / списка */
+.reminders-page__form-title,
+.reminders-page__list-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+/* Лейблы полей формы */
+.reminders-page__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #4b5563;
+  margin-bottom: 2px;
+}
+
+/* Инпуты и textarea */
+.reminders-page__input,
+.reminders-page__textarea {
+  width: 100%;
   padding: 8px 10px;
-  border-radius: 4px;
-  border: 1px solid #e5e7eb;
-  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
   font-size: 14px;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.reminders-page__textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+/* Фокус состояний инпутов */
+.reminders-page__input:focus,
+.reminders-page__textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
+}
+
+/* Кнопка добавления */
+.reminders-page__button {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 9999px;
+  border: none;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  align-self: flex-end;
+}
+
+.reminders-page__button:hover {
+  background: #1d4ed8;
+}
+
+/* Список напоминаний (контейнер карточек) */
+.reminders-page__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Карточка напоминания */
+.reminders-page__item {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Заголовок карточки + действия справа */
+.reminders-page__item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.reminders-page__item-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Кнопки действий в карточке (например, удалить) */
+.reminders-page__item-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.reminders-page__item-button {
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+/* Время напоминания в карточке */
+.reminders-page__reminds-at {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* Описание напоминания */
+.reminders-page__item-description {
+  font-size: 13px;
+  color: #4b5563;
+}
+
+/* Адаптация под мобильные */
+@media (max-width: 768px) {
+  .reminders-page__container {
+    flex-direction: column;
+  }
+
+  .reminders-page__form {
+    order: 1;
+    margin: 0 auto;
+  }
+
+  .reminders-page__right {
+    order: 2;
+    width: 100%;
+  }
 }
