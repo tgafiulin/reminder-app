@@ -14,9 +14,10 @@ export function useReminderScheduler(reminders: Reminder[], onTrigger: ReminderT
       timeoutIdRef.current = null;
     }
 
-    // выбрать ближайшее напоминание в будущем
+    // выбрать ближайшее напоминание в будущем только среди активных
     const now = new Date();
     const futureReminders = reminders
+      .filter((r) => r.status !== "done")
       .filter((r) => r.remindsAt)
       .map((r) => ({
         reminder: r,
