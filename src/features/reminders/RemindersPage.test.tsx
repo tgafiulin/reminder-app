@@ -1,6 +1,6 @@
 /// <reference types="vitest/globals" />
 
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { RemindersPage } from "./RemindersPage";
 import { REMINDERS_STORAGE_KEY } from "./api/storage";
 import userEvent from "@testing-library/user-event";

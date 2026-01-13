@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { loadReminders, saveReminders, REMINDERS_STORAGE_KEY } from "./storage";
+import type { Reminder } from "../types";
 
 describe("reminders storage", () => {
   beforeEach(() => {
@@ -13,9 +14,9 @@ describe("reminders storage", () => {
   });
 
   it("loads reminders from valid JSON", () => {
-    const reminders = [
-      { id: "1", title: "Выполнить тест" },
-      { id: "2", title: "Выполнить тест с разными элементами" },
+    const reminders: Reminder[] = [
+      { id: "1", title: "Выполнить тест", status: "active" },
+      { id: "2", title: "Выполнить тест с разными элементами", status: "active" },
     ];
     localStorage.setItem(REMINDERS_STORAGE_KEY, JSON.stringify(reminders));
 
@@ -29,9 +30,9 @@ describe("reminders storage", () => {
   });
 
   it("saves reminders as JSON string", () => {
-    const reminders = [
-      { id: "1", title: "Выполнить тест" },
-      { id: "2", title: "Выполнить тест с разными элементами" },
+    const reminders: Reminder[] = [
+      { id: "1", title: "Выполнить тест", status: "active" },
+      { id: "2", title: "Выполнить тест с разными элементами", status: "active" },
     ];
 
     saveReminders(reminders);
