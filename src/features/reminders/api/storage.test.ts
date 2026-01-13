@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+/// <reference types="vitest/globals" />
+
 import { loadReminders, saveReminders, REMINDERS_STORAGE_KEY } from "./storage";
 import type { Reminder } from "../types";
 

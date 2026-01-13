@@ -1,12 +1,28 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+/// <reference types="vitest/globals" />
+
 import { renderHook } from "@testing-library/react";
 import { useReminderScheduler } from "./useReminderScheduler";
 import type { Reminder } from "../types";
+
+// Мокаем глобальный Notification API
+globalThis.Notification = {
+  permission: "granted",
+} as unknown as typeof Notification;
+
+// Мокаем модуль уведомлений
+vi.mock("../lib/notification", () => ({
+  showNotification: vi.fn(),
+  canShowNotifications: vi.fn(() => true),
+}));
+
+// Импортируем мокнутую функцию после объявления vi.mock
+import { showNotification } from "../lib/notification";
 
 describe("useReminderScheduler", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-02T12:00:00.000Z"));
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
@@ -30,21 +46,15 @@ describe("useReminderScheduler", () => {
       },
     ];
 
-    const mockShowNotification = vi.fn();
-    vi.mock("../../lib/notifications", () => ({
-      showNotification: mockShowNotification,
-    }));
-
     renderHook(() => useReminderScheduler(reminders));
 
     // перематываем время на 5 минут
     vi.advanceTimersByTime(5 * 60 * 1000);
 
-    expect(mockShowNotification).toHaveBeenCalledTimes(1);
-    expect(mockShowNotification).toHaveBeenCalledWith({
+    expect(showNotification).toHaveBeenCalledTimes(1);
+    expect(showNotification).toHaveBeenCalledWith({
       title: "через 5 минут",
-      body: undefined,
-      icon: "/reminder-app/vite.svg",
+      body: "Напоминание",
       tag: "2",
     });
   });
@@ -60,14 +70,9 @@ describe("useReminderScheduler", () => {
       },
     ];
 
-    const mockShowNotification = vi.fn();
-    vi.mock("../../lib/notifications", () => ({
-      showNotification: mockShowNotification,
-    }));
-
     renderHook(() => useReminderScheduler(reminders));
 
     vi.runAllTimers(); // не должно быть уведомлений
-    expect(mockShowNotification).not.toHaveBeenCalled();
+    expect(showNotification).not.toHaveBeenCalled();
   });
 });

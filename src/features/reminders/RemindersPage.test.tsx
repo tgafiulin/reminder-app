@@ -1,10 +1,24 @@
 /// <reference types="vitest/globals" />
 
+import "@testing-library/jest-dom";
 import { screen } from "@testing-library/react";
 import { RemindersPage } from "./RemindersPage";
 import { REMINDERS_STORAGE_KEY } from "./api/storage";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine } from "../../test-utils";
+
+// Мокаем модуль уведомлений
+vi.mock("../lib/notification", () => ({
+  showNotification: vi.fn(),
+  canShowNotifications: vi.fn(() => true),
+}));
+
+// Мокаем crypto.randomUUID()
+Object.defineProperty(globalThis, "crypto", {
+  value: {
+    randomUUID: () => "mock-uuid-1234",
+  },
+});
 
 describe("reminders storage", () => {
   beforeEach(() => {
@@ -13,8 +27,8 @@ describe("reminders storage", () => {
 
   it("renders initial reminders", () => {
     const reminders = [
-      { id: "1", title: "Выполнить тест1" },
-      { id: "2", title: "Выполнить тест с разными элементами" },
+      { id: "1", title: "Выполнить тест1", status: "active" },
+      { id: "2", title: "Выполнить тест с разными элементами", status: "active" },
     ];
 
     localStorage.setItem(REMINDERS_STORAGE_KEY, JSON.stringify(reminders));
@@ -30,8 +44,8 @@ describe("reminders storage", () => {
 
     renderWithMantine(<RemindersPage />);
 
-    const input = screen.getByPlaceholderText(/Новое напоминание/i);
-    const button = screen.getByRole("button", { name: /добавить/i });
+    const input = screen.getByPlaceholderText(/Введите заголовок напоминания/i);
+    const button = screen.getByRole("button", { name: /создать напоминание/i });
 
     const title = "Проверка сохранения в localStorage";
 
@@ -47,7 +61,7 @@ describe("reminders storage", () => {
 
     const parsed = JSON.parse(stored as string);
     expect(parsed).toEqual([
-      { id: expect.any(String), title }, // id генерируется, поэтому матчим по any(String)
+      { id: expect.any(String), title, status: "active" }, // id генерируется, поэтому матчим по any(String)
     ]);
   });
 
@@ -56,34 +70,29 @@ describe("reminders storage", () => {
 
     renderWithMantine(<RemindersPage />);
 
-    const input = screen.getByPlaceholderText(/Новое напоминание/i);
-    const textarea = screen.getByPlaceholderText(/Описание/i);
-    const urlInput = screen.getByPlaceholderText(/Ссылка на медиа/i);
-    const button = screen.getByRole("button", { name: /добавить/i });
+    const input = screen.getByPlaceholderText(/Введите заголовок напоминания/i);
+    const contextInput = screen.getByPlaceholderText(/Например: Поездка в Стамбул/i);
+    const button = screen.getByRole("button", { name: /создать напоминание/i });
 
     const title = "Проверка сохранения в localStorage";
-    const description = "Необязательное описание";
-    const url = "http://localhost:5173/";
+    const context = "Тестовый контекст";
 
     await user.type(input, title);
-    await user.type(textarea, description);
-    await user.type(urlInput, url);
+    await user.type(contextInput, context);
     await user.click(button);
 
     // в UI появился новый элемент
     expect(screen.getByText(title)).toBeInTheDocument();
-    expect(screen.getByText(description)).toBeInTheDocument();
-
-    const mediaLink = screen.getByRole("link", { name: /открыть медиа/i });
-    expect(mediaLink).toHaveAttribute("href", url);
+    // Контекст может появляться несколько раз (в списке автозаполнения и в карточке)
+    expect(screen.getAllByText(context).length).toBeGreaterThan(0);
   });
 
   it("removes reminder from UI and localStorage when delete clicked", async () => {
     const user = userEvent.setup();
 
     const reminders = [
-      { id: "1", title: "Первое напоминание" },
-      { id: "2", title: "Второе напоминание" },
+      { id: "1", title: "Первое напоминание", status: "active" },
+      { id: "2", title: "Второе напоминание", status: "active" },
     ];
 
     localStorage.setItem(REMINDERS_STORAGE_KEY, JSON.stringify(reminders));
@@ -107,7 +116,7 @@ describe("reminders storage", () => {
     expect(stored).not.toBeNull();
 
     const parsed = JSON.parse(stored as string);
-    expect(parsed).toEqual([{ id: "2", title: "Второе напоминание" }]);
+    expect(parsed).toEqual([{ id: "2", title: "Второе напоминание", status: "active" }]);
   });
 
   afterEach(() => {
