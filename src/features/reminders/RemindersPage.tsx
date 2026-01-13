@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   TextInput,
-  Textarea,
   Button,
   Stack,
   Group,
@@ -9,12 +8,18 @@ import {
   Text,
   Checkbox,
   Badge,
+  Autocomplete,
+  ActionIcon,
+  Divider,
+  Title,
 } from "@mantine/core";
+import { IconSettings, IconPlus, IconCalendar, IconTag, IconNote } from "@tabler/icons-react";
 import type { Reminder } from "./types";
 
 import "./RemindersPage.css";
-import { loadReminders, saveReminders } from "./api/storage";
+import { loadReminders, saveReminders, getAllContexts } from "./api/storage";
 import { useReminderScheduler } from "./hooks/useReminderScheduler";
+import { ContextsModal } from "./ContextsModal";
 
 export function RemindersPage() {
   const [reminders, setReminders] = useState<Reminder[]>(() => {
@@ -28,21 +33,23 @@ export function RemindersPage() {
       : [];
   });
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [mediaUrl, setMediaUrl] = useState("");
   const [remindsAt, setRemindsAt] = useState("");
   const [context, setContext] = useState("");
   const [triggeredReminderId, setTriggeredReminderId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
-  const [editingDescription, setEditingDescription] = useState("");
-  const [editingMediaUrl, setEditingMediaUrl] = useState("");
   const [editingRemindsAt, setEditingRemindsAt] = useState("");
   const [editingContext, setEditingContext] = useState("");
+  const [contextsModalOpened, setContextsModalOpened] = useState(false);
+  const [contextsList, setContextsList] = useState<string[]>([]);
 
   useReminderScheduler(reminders, (id) => {
     setTriggeredReminderId(id);
   });
+
+  useEffect(() => {
+    setContextsList(getAllContexts(reminders));
+  }, [reminders]);
 
   const handleCloseBanner = () => {
     setTriggeredReminderId(null);
@@ -81,8 +88,6 @@ export function RemindersPage() {
     const newReminder: Reminder = {
       id: crypto.randomUUID(),
       title: title.trim(),
-      description: description.trim() || undefined,
-      mediaUrl: mediaUrl.trim() || undefined,
       remindsAt: remindsAtIso,
       status: "active",
       context: context.trim() || undefined,
@@ -92,8 +97,6 @@ export function RemindersPage() {
 
     setReminders(updatedRemiders);
     setTitle("");
-    setMediaUrl("");
-    setDescription("");
     setRemindsAt("");
     setContext("");
   };
@@ -101,8 +104,6 @@ export function RemindersPage() {
   const handleStartEdit = (reminder: Reminder) => {
     setEditingId(reminder.id);
     setEditingTitle(reminder.title);
-    setEditingDescription(reminder.description ?? "");
-    setEditingMediaUrl(reminder.mediaUrl ?? "");
     setEditingContext(reminder.context ?? "");
     if (reminder.remindsAt) {
       const date = new Date(reminder.remindsAt);
@@ -138,8 +139,6 @@ export function RemindersPage() {
           ? {
               ...r,
               title: editingTitle.trim(),
-              description: editingDescription.trim() || undefined,
-              mediaUrl: editingMediaUrl.trim() || undefined,
               remindsAt: remindsAtIso,
               context: editingContext.trim() || undefined,
             }
@@ -170,50 +169,107 @@ export function RemindersPage() {
   return (
     <div className="reminders-page">
       <div className="reminders-page__container">
-        <Card shadow="md" radius="md" padding="md" w={340}>
-          <Text fw={600} mb="xs">
-            Новое напоминание
-          </Text>
+        <Card
+          shadow="lg"
+          radius="lg"
+          padding="xl"
+          w={380}
+          style={{
+            background: "linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)",
+            border: "1px solid #e9ecef",
+          }}
+        >
+          <Stack gap="lg">
+            <div>
+              <Title order={3} fw={700} mb={4} c="dark.8">
+                Новое напоминание
+              </Title>
+              <Text size="sm" c="dimmed">
+                Создайте новое напоминание для важных дел
+              </Text>
+            </div>
 
-          <Stack gap="xs">
-            <TextInput
-              label="Заголовок"
-              placeholder="Новое напоминание"
-              value={title}
-              onChange={(e) => setTitle(e.currentTarget.value)}
-            />
+            <Divider />
 
-            <Textarea
-              label="Описание"
-              placeholder="Описание (необязательно)"
-              value={description}
-              onChange={(e) => setDescription(e.currentTarget.value)}
-            />
+            <Stack gap="md">
+              <TextInput
+                label="Заголовок"
+                placeholder="Введите заголовок напоминания"
+                value={title}
+                onChange={(e) => setTitle(e.currentTarget.value)}
+                leftSection={<IconNote size={18} />}
+                size="md"
+                required
+                styles={{
+                  label: {
+                    fontWeight: 600,
+                    marginBottom: 8,
+                  },
+                }}
+              />
 
-            <TextInput
-              label="Ссылка на медиа"
-              placeholder="Ссылка на медиа (необязательно)"
-              value={mediaUrl}
-              onChange={(e) => setMediaUrl(e.currentTarget.value)}
-            />
+              <Group gap="xs" align="flex-end">
+                <Autocomplete
+                  label="Контекст / тема"
+                  placeholder="Например: Поездка в Стамбул"
+                  value={context}
+                  onChange={setContext}
+                  data={contextsList}
+                  leftSection={<IconTag size={18} />}
+                  size="md"
+                  style={{ flex: 1 }}
+                  styles={{
+                    label: {
+                      fontWeight: 600,
+                      marginBottom: 8,
+                    },
+                  }}
+                />
+                <ActionIcon
+                  variant="light"
+                  color="blue"
+                  size="lg"
+                  onClick={() => setContextsModalOpened(true)}
+                  title="Управление контекстами"
+                  style={{ marginBottom: 4 }}
+                >
+                  <IconSettings size={20} />
+                </ActionIcon>
+              </Group>
 
-            <TextInput
-              label="Контекст / тема"
-              placeholder="Например: Поездка в Стамбул"
-              value={context}
-              onChange={(e) => setContext(e.currentTarget.value)}
-            />
+              <TextInput
+                label="Когда напомнить"
+                type="datetime-local"
+                value={remindsAt}
+                onChange={(e) => setRemindsAt(e.currentTarget.value)}
+                leftSection={<IconCalendar size={18} />}
+                size="md"
+                styles={{
+                  label: {
+                    fontWeight: 600,
+                    marginBottom: 8,
+                  },
+                }}
+              />
+            </Stack>
 
-            <TextInput
-              label="Когда напомнить"
-              type="datetime-local"
-              value={remindsAt}
-              onChange={(e) => setRemindsAt(e.currentTarget.value)}
-            />
+            <Divider />
 
-            <Group justify="flex-end" mt="sm">
-              <Button onClick={addNewReminder}>Добавить</Button>
-            </Group>
+            <Button
+              onClick={addNewReminder}
+              size="md"
+              leftSection={<IconPlus size={18} />}
+              fullWidth
+              variant="gradient"
+              gradient={{ from: "blue", to: "cyan", deg: 90 }}
+              disabled={!title.trim()}
+              style={{
+                fontWeight: 600,
+                height: 44,
+              }}
+            >
+              Создать напоминание
+            </Button>
           </Stack>
         </Card>
         <div className="reminders-page__right">
@@ -271,21 +327,22 @@ export function RemindersPage() {
                               value={editingTitle}
                               onChange={(e) => setEditingTitle(e.currentTarget.value)}
                             />
-                            <Textarea
-                              label="Описание"
-                              value={editingDescription}
-                              onChange={(e) => setEditingDescription(e.currentTarget.value)}
-                            />
-                            <TextInput
-                              label="Ссылка на медиа"
-                              value={editingMediaUrl}
-                              onChange={(e) => setEditingMediaUrl(e.currentTarget.value)}
-                            />
-                            <TextInput
-                              label="Контекст / тема"
-                              value={editingContext}
-                              onChange={(e) => setEditingContext(e.currentTarget.value)}
-                            />
+                            <Group gap="xs" align="flex-end">
+                              <Autocomplete
+                                label="Контекст / тема"
+                                value={editingContext}
+                                onChange={setEditingContext}
+                                data={contextsList}
+                                style={{ flex: 1 }}
+                              />
+                              <ActionIcon
+                                variant="light"
+                                onClick={() => setContextsModalOpened(true)}
+                                title="Управление контекстами"
+                              >
+                                <IconSettings size={18} />
+                              </ActionIcon>
+                            </Group>
                             <TextInput
                               label="Когда напомнить"
                               type="datetime-local"
@@ -360,25 +417,6 @@ export function RemindersPage() {
                               </Group>
                             </Group>
 
-                            {reminder.description && (
-                              <Text size="sm" mt={4} style={isDone ? { opacity: 0.7 } : undefined}>
-                                {reminder.description}
-                              </Text>
-                            )}
-
-                            {reminder.mediaUrl && (
-                              <Text
-                                component="a"
-                                href={reminder.mediaUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                size="sm"
-                                mt={4}
-                              >
-                                Открыть медиа
-                              </Text>
-                            )}
-
                             {isTriggered && (
                               <Text size="xs" mt={4} c="green.9" fw={500}>
                                 Напоминание сработало
@@ -395,6 +433,26 @@ export function RemindersPage() {
           </Stack>
         </div>
       </div>
+      <ContextsModal
+        opened={contextsModalOpened}
+        onClose={() => setContextsModalOpened(false)}
+        reminders={reminders}
+        onContextUpdate={() => {
+          setContextsList(getAllContexts(reminders));
+        }}
+        onContextRenamed={(oldContext, newContext) => {
+          setReminders((prev) =>
+            prev.map((r) => (r.context?.trim() === oldContext ? { ...r, context: newContext } : r))
+          );
+        }}
+        onContextDeleted={(deletedContext) => {
+          setReminders((prev) =>
+            prev.map((r) =>
+              r.context?.trim() === deletedContext ? { ...r, context: undefined } : r
+            )
+          );
+        }}
+      />
     </div>
   );
 }
