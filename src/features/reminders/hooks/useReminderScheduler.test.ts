@@ -13,7 +13,7 @@ describe("useReminderScheduler", () => {
     vi.useRealTimers();
   });
 
-  it("вызывает onTrigger для ближайшего напоминания", () => {
+  it("вызывает showNotification для ближайшего напоминания", () => {
     const reminders: Reminder[] = [
       { id: "1", title: "без даты", status: "active" },
       {
@@ -30,15 +30,23 @@ describe("useReminderScheduler", () => {
       },
     ];
 
-    const onTrigger = vi.fn();
+    const mockShowNotification = vi.fn();
+    vi.mock("../../lib/notifications", () => ({
+      showNotification: mockShowNotification,
+    }));
 
-    renderHook(() => useReminderScheduler(reminders, onTrigger));
+    renderHook(() => useReminderScheduler(reminders));
 
     // перематываем время на 5 минут
     vi.advanceTimersByTime(5 * 60 * 1000);
 
-    expect(onTrigger).toHaveBeenCalledTimes(1);
-    expect(onTrigger).toHaveBeenCalledWith("2");
+    expect(mockShowNotification).toHaveBeenCalledTimes(1);
+    expect(mockShowNotification).toHaveBeenCalledWith({
+      title: "через 5 минут",
+      body: undefined,
+      icon: "/reminder-app/vite.svg",
+      tag: "2",
+    });
   });
 
   it("не ставит таймер если нет будущих напоминаний", () => {
@@ -52,11 +60,14 @@ describe("useReminderScheduler", () => {
       },
     ];
 
-    const onTrigger = vi.fn();
+    const mockShowNotification = vi.fn();
+    vi.mock("../../lib/notifications", () => ({
+      showNotification: mockShowNotification,
+    }));
 
-    renderHook(() => useReminderScheduler(reminders, onTrigger));
+    renderHook(() => useReminderScheduler(reminders));
 
-    vi.runAllTimers(); // не должно быть колбеков
-    expect(onTrigger).not.toHaveBeenCalled();
+    vi.runAllTimers(); // не должно быть уведомлений
+    expect(mockShowNotification).not.toHaveBeenCalled();
   });
 });
