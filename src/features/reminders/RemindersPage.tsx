@@ -35,7 +35,6 @@ export function RemindersPage() {
   const [title, setTitle] = useState("");
   const [remindsAt, setRemindsAt] = useState("");
   const [context, setContext] = useState("");
-  const [triggeredReminderId, setTriggeredReminderId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [editingRemindsAt, setEditingRemindsAt] = useState("");
@@ -48,10 +47,6 @@ export function RemindersPage() {
   useEffect(() => {
     setContextsList(getAllContexts(reminders));
   }, [reminders]);
-
-  const handleCloseBanner = () => {
-    setTriggeredReminderId(null);
-  };
 
   const handleDeleteReminder = (id: string) => {
     setReminders(reminders.filter((r) => r.id !== id));
@@ -274,23 +269,6 @@ export function RemindersPage() {
           <Text fw={600} mb="xs">
             Мои напоминания
           </Text>
-          {triggeredReminderId && (
-            <Card
-              padding="xs"
-              radius="md"
-              withBorder
-              style={{ borderColor: "#22c55e", background: "#ecfdf3" }}
-            >
-              <Group justify="space-between">
-                <Text size="sm" c="green.9">
-                  Напоминание сработало
-                </Text>
-                <Button variant="subtle" size="xs" color="green" onClick={handleCloseBanner}>
-                  OK
-                </Button>
-              </Group>
-            </Card>
-          )}
           <Stack gap="xs" mt="sm">
             {groupedReminders.map(([groupName, groupReminders]) => (
               <div key={groupName}>
@@ -299,25 +277,11 @@ export function RemindersPage() {
                 </Text>
                 <Stack gap="xs">
                   {groupReminders.map((reminder) => {
-                    const isTriggered = triggeredReminderId === reminder.id;
                     const isEditing = editingId === reminder.id;
                     const isDone = reminder.status === "done";
 
                     return (
-                      <Card
-                        key={reminder.id}
-                        radius="md"
-                        withBorder
-                        shadow="xs"
-                        style={
-                          isTriggered
-                            ? {
-                                borderColor: "#22c55e",
-                                boxShadow: "0 0 0 1px rgba(34,197,94,0.25)",
-                              }
-                            : undefined
-                        }
-                      >
+                      <Card key={reminder.id} radius="md" withBorder shadow="xs">
                         {isEditing ? (
                           <Stack gap={4}>
                             <TextInput
@@ -414,12 +378,6 @@ export function RemindersPage() {
                                 </Button>
                               </Group>
                             </Group>
-
-                            {isTriggered && (
-                              <Text size="xs" mt={4} c="green.9" fw={500}>
-                                Напоминание сработало
-                              </Text>
-                            )}
                           </>
                         )}
                       </Card>
