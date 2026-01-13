@@ -6,32 +6,63 @@ export interface NotificationOptions {
 }
 
 /**
+ * Запрашивает разрешение на показ уведомлений
+ * @returns Promise с результатом запроса разрешения
+ */
+export async function requestNotificationPermission(): Promise<NotificationPermission> {
+  if (!("Notification" in window)) {
+    return "denied";
+  }
+
+  if (Notification.permission === "granted") {
+    return "granted";
+  }
+
+  if (Notification.permission === "denied") {
+    return "denied";
+  }
+
+  try {
+    const permission = await Notification.requestPermission();
+    return permission;
+  } catch {
+    return "denied";
+  }
+}
+
+/**
  * Показывает уведомление
  */
-export function showNotification(options: NotificationOptions): void {
+export async function showNotification(options: NotificationOptions): Promise<void> {
   if (!("Notification" in window)) {
-    console.warn("Notification API не поддерживается");
     return;
   }
 
+  // Если разрешения нет, пытаемся запросить
   if (Notification.permission !== "granted") {
-    console.warn("Нет разрешения на уведомления");
-    return;
+    const permission = await requestNotificationPermission();
+    if (permission !== "granted") {
+      return;
+    }
   }
 
-  // Создаем уведомление
-  const notification = new Notification(options.title, {
-    body: options.body,
-    icon: options.icon || "/reminder-app/vite.svg",
-    tag: options.tag,
-    requireInteraction: true, // Уведомление не исчезнет автоматически
-  });
+  try {
+    // Создаем уведомление (работает и в браузере, и в PWA)
+    const notification = new Notification(options.title, {
+      body: options.body,
+      icon: options.icon || "/reminder-app/vite.svg",
+      tag: options.tag,
+      requireInteraction: true, // Уведомление не исчезнет автоматически
+    });
 
-  // При клике на уведомление фокусируем окно
-  notification.onclick = () => {
-    window.focus();
-    notification.close();
-  };
+    // При клике на уведомление фокусируем окно
+    notification.onclick = () => {
+      window.focus();
+      notification.close();
+    };
+  } catch {
+    // Ошибка при создании уведомления
+  }
 }
 
 /**
@@ -39,4 +70,14 @@ export function showNotification(options: NotificationOptions): void {
  */
 export function canShowNotifications(): boolean {
   return "Notification" in window && Notification.permission === "granted";
+}
+
+/**
+ * Возвращает текущее состояние разрешения на уведомления
+ */
+export function getNotificationPermission(): NotificationPermission | null {
+  if (!("Notification" in window)) {
+    return null;
+  }
+  return Notification.permission;
 }

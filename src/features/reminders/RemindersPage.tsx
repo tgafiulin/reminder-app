@@ -12,14 +12,23 @@ import {
   ActionIcon,
   Divider,
   Title,
+  Alert,
 } from "@mantine/core";
-import { IconSettings, IconPlus, IconCalendar, IconTag, IconNote } from "@tabler/icons-react";
+import {
+  IconSettings,
+  IconPlus,
+  IconCalendar,
+  IconTag,
+  IconNote,
+  IconBell,
+} from "@tabler/icons-react";
 import type { Reminder } from "./types";
 
 import "./RemindersPage.css";
 import { loadReminders, saveReminders, getAllContexts } from "./api/storage";
 import { useReminderScheduler } from "./hooks/useReminderScheduler";
 import { ContextsModal } from "./ContextsModal";
+import { requestNotificationPermission, getNotificationPermission } from "./lib/notification";
 
 export function RemindersPage() {
   const [reminders, setReminders] = useState<Reminder[]>(() => {
@@ -41,12 +50,60 @@ export function RemindersPage() {
   const [editingContext, setEditingContext] = useState("");
   const [contextsModalOpened, setContextsModalOpened] = useState(false);
   const [contextsList, setContextsList] = useState<string[]>([]);
+  const [showPermissionBanner, setShowPermissionBanner] = useState(false);
+  const [dismissedPermissionBanner, setDismissedPermissionBanner] = useState(false);
+  const [notificationPermission, setNotificationPermission] =
+    useState<NotificationPermission | null>(null);
 
   useReminderScheduler(reminders);
 
   useEffect(() => {
     setContextsList(getAllContexts(reminders));
   }, [reminders]);
+
+  // Проверяем разрешение на уведомления при загрузке
+  useEffect(() => {
+    const permission = getNotificationPermission();
+    setNotificationPermission(permission);
+    // Показываем баннер, если API поддерживается, уведомления не включены и пользователь не скрыл баннер
+    if ("Notification" in window && permission !== "granted" && !dismissedPermissionBanner) {
+      setShowPermissionBanner(true);
+    } else {
+      setShowPermissionBanner(false);
+    }
+  }, [dismissedPermissionBanner]);
+
+  // Сохраняем состояние скрытия баннера в localStorage
+  useEffect(() => {
+    if (dismissedPermissionBanner) {
+      localStorage.setItem("remindy:dismissedNotificationBanner", "true");
+    }
+  }, [dismissedPermissionBanner]);
+
+  // Восстанавливаем состояние скрытия баннера при загрузке
+  useEffect(() => {
+    const dismissed = localStorage.getItem("remindy:dismissedNotificationBanner");
+    if (dismissed === "true") {
+      setDismissedPermissionBanner(true);
+    }
+  }, []);
+
+  const handleRequestNotificationPermission = async () => {
+    const permission = await requestNotificationPermission();
+    setNotificationPermission(permission);
+    if (permission !== "granted") {
+      console.warn("Разрешение на уведомления не получено");
+    }
+    // Скрываем баннер, если разрешение получено
+    if (permission === "granted") {
+      setShowPermissionBanner(false);
+    }
+  };
+
+  const handleDismissBanner = () => {
+    setDismissedPermissionBanner(true);
+    setShowPermissionBanner(false);
+  };
 
   const handleDeleteReminder = (id: string) => {
     setReminders(reminders.filter((r) => r.id !== id));
@@ -266,6 +323,35 @@ export function RemindersPage() {
           </Stack>
         </Card>
         <div className="reminders-page__right">
+          {showPermissionBanner && (
+            <Alert
+              variant="light"
+              color={notificationPermission === "denied" ? "orange" : "blue"}
+              title={
+                notificationPermission === "denied"
+                  ? "Уведомления отключены"
+                  : "Включите уведомления"
+              }
+              icon={<IconBell size={20} />}
+              mb="md"
+            >
+              <Text size="sm" mb="xs">
+                {notificationPermission === "denied"
+                  ? "Вы отклонили разрешение на уведомления. Чтобы включить их, зайдите в настройки сайта в браузере."
+                  : "Разрешите уведомления, чтобы получать напоминания о важных событиях."}
+              </Text>
+              <Group gap="xs">
+                {notificationPermission !== "denied" && (
+                  <Button size="xs" onClick={handleRequestNotificationPermission}>
+                    Разрешить уведомления
+                  </Button>
+                )}
+                <Button size="xs" variant="subtle" onClick={handleDismissBanner}>
+                  Больше не показывать
+                </Button>
+              </Group>
+            </Alert>
+          )}
           <Text fw={600} mb="xs">
             Мои напоминания
           </Text>

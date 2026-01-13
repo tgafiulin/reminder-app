@@ -10,6 +10,22 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["vite.svg"],
+      workbox: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "google-fonts-cache",
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+              },
+            },
+          },
+        ],
+      },
       manifest: {
         name: "Remindy",
         short_name: "Remindy",
@@ -17,10 +33,16 @@ export default defineConfig({
         theme_color: "#228be6",
         background_color: "#ffffff",
         display: "standalone",
+        start_url: "/reminder-app/",
         icons: [
           {
             src: "vite.svg",
             sizes: "192x192",
+            type: "image/svg+xml",
+          },
+          {
+            src: "vite.svg",
+            sizes: "512x512",
             type: "image/svg+xml",
           },
         ],

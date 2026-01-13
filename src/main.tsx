@@ -6,6 +6,7 @@ import App from "./App.tsx";
 import { MantineProvider } from "@mantine/core";
 import "@mantine/core/styles.css";
 
+// Запрашиваем разрешение на уведомления при загрузке приложения
 if ("Notification" in window && Notification.permission === "default") {
   Notification.requestPermission().then((permission) => {
     if (permission === "granted") {
