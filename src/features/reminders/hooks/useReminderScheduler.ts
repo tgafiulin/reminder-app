@@ -1,10 +1,9 @@
 import { useEffect, useRef } from "react";
 import { getDelayUntil } from "../lib/time";
 import type { Reminder } from "../types";
+import { showNotification } from "../lib/notification";
 
-type ReminderTriggerHandler = (reminderId: string) => void;
-
-export function useReminderScheduler(reminders: Reminder[], onTrigger: ReminderTriggerHandler) {
+export function useReminderScheduler(reminders: Reminder[]) {
   const timeoutIdRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -31,7 +30,11 @@ export function useReminderScheduler(reminders: Reminder[], onTrigger: ReminderT
     const { reminder, delay } = futureReminders[0];
 
     const id = window.setTimeout(() => {
-      onTrigger(reminder.id);
+      showNotification({
+        title: reminder.title,
+        body: reminder.description || "Напоминание",
+        tag: reminder.id, // Чтобы заменить старое уведомление новым
+      });
     }, delay);
 
     timeoutIdRef.current = id;
@@ -42,5 +45,5 @@ export function useReminderScheduler(reminders: Reminder[], onTrigger: ReminderT
         timeoutIdRef.current = null;
       }
     };
-  }, [reminders, onTrigger]);
+  }, [reminders]);
 }

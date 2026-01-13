@@ -43,9 +43,7 @@ export function RemindersPage() {
   const [contextsModalOpened, setContextsModalOpened] = useState(false);
   const [contextsList, setContextsList] = useState<string[]>([]);
 
-  useReminderScheduler(reminders, (id) => {
-    setTriggeredReminderId(id);
-  });
+  useReminderScheduler(reminders);
 
   useEffect(() => {
     setContextsList(getAllContexts(reminders));
