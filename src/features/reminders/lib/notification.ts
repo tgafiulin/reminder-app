@@ -62,22 +62,29 @@ export async function showNotification(options: NotificationOptions): Promise<vo
   }
 
   try {
-    alert("📱 Шаг 4: Создание уведомления...");
+    alert("📱 Шаг 4: Получение Service Worker registration...");
 
-    // Создаем уведомление (работает и в браузере, и в PWA)
-    const notification = new Notification(options.title, {
+    // Получаем регистрацию service worker
+    const registration = await navigator.serviceWorker.getRegistration();
+
+    if (!registration) {
+      alert("❌ Шаг 4.1: Service Worker не зарегистрирован");
+      return;
+    }
+
+    alert("✅ Шаг 4.2: Service Worker найден");
+
+    alert("📱 Шаг 4.3: Отправка уведомления через Service Worker...");
+
+    // Создаем уведомление через Service Worker
+    await registration.showNotification(options.title, {
       body: options.body,
       tag: options.tag,
       requireInteraction: true, // Уведомление не исчезнет автоматически
+      icon: options.icon,
     });
 
-    alert("✅ Шаг 4.1: Уведомление создано успешно");
-
-    // При клике на уведомление фокусируем окно
-    notification.onclick = () => {
-      window.focus();
-      notification.close();
-    };
+    alert("✅ Шаг 4.4: Уведомление успешно отправлено через Service Worker");
   } catch (error) {
     alert(`❌ Шаг 4: Ошибка при создании уведомления: ${error}`);
     // Ошибка при создании уведомления
