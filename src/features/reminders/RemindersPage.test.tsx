@@ -44,13 +44,27 @@ describe("reminders storage", () => {
 
     renderWithMantine(<RemindersPage />);
 
+    // Открываем модальное окно
+    const addButton = screen.getByRole("button", { name: /добавить/i });
+    await user.click(addButton);
+
+    // Заполняем форму
     const input = screen.getByPlaceholderText(/Введите заголовок напоминания/i);
-    const button = screen.getByRole("button", { name: /создать напоминание/i });
-
     const title = "Проверка сохранения в localStorage";
-
     await user.type(input, title);
-    await user.click(button);
+
+    // Заполняем дату (обязательное поле)
+    const dateInput = screen.getByLabelText(/Когда напомнить/i);
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 1);
+    const dateValue = futureDate.toISOString().slice(0, 16);
+    await user.type(dateInput, dateValue);
+
+    // Создаём напоминание (выбираем кнопку "Создать" из модального окна, а не "Создать напоминание" из пустого состояния)
+    const createButtons = screen.getAllByRole("button", { name: /создать/i });
+    const createButton = createButtons.find((btn) => btn.textContent === "Создать");
+    expect(createButton).toBeDefined();
+    await user.click(createButton!);
 
     // в UI появился новый элемент
     expect(screen.getByText("Проверка сохранения в localStorage")).toBeInTheDocument();
@@ -61,7 +75,7 @@ describe("reminders storage", () => {
 
     const parsed = JSON.parse(stored as string);
     expect(parsed).toEqual([
-      { id: expect.any(String), title, status: "active" }, // id генерируется, поэтому матчим по any(String)
+      { id: expect.any(String), title, status: "active", remindsAt: expect.any(String) }, // id генерируется, поэтому матчим по any(String)
     ]);
   });
 
@@ -70,16 +84,31 @@ describe("reminders storage", () => {
 
     renderWithMantine(<RemindersPage />);
 
+    // Открываем модальное окно
+    const addButton = screen.getByRole("button", { name: /добавить/i });
+    await user.click(addButton);
+
+    // Заполняем форму
     const input = screen.getByPlaceholderText(/Введите заголовок напоминания/i);
-    const contextInput = screen.getByPlaceholderText(/Например: Поездка в Стамбул/i);
-    const button = screen.getByRole("button", { name: /создать напоминание/i });
-
     const title = "Проверка сохранения в localStorage";
-    const context = "Тестовый контекст";
-
     await user.type(input, title);
+
+    const contextInput = screen.getByPlaceholderText(/Например: Поездка в Стамбул/i);
+    const context = "Тестовый контекст";
     await user.type(contextInput, context);
-    await user.click(button);
+
+    // Заполняем дату (обязательное поле)
+    const dateInput = screen.getByLabelText(/Когда напомнить/i);
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 1);
+    const dateValue = futureDate.toISOString().slice(0, 16);
+    await user.type(dateInput, dateValue);
+
+    // Создаём напоминание (выбираем кнопку "Создать" из модального окна, а не "Создать напоминание" из пустого состояния)
+    const createButtons = screen.getAllByRole("button", { name: /создать/i });
+    const createButton = createButtons.find((btn) => btn.textContent === "Создать");
+    expect(createButton).toBeDefined();
+    await user.click(createButton!);
 
     // в UI появился новый элемент
     expect(screen.getByText(title)).toBeInTheDocument();
@@ -90,9 +119,13 @@ describe("reminders storage", () => {
   it("removes reminder from UI and localStorage when delete clicked", async () => {
     const user = userEvent.setup();
 
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 1);
+    const remindsAt = futureDate.toISOString();
+
     const reminders = [
-      { id: "1", title: "Первое напоминание", status: "active" },
-      { id: "2", title: "Второе напоминание", status: "active" },
+      { id: "1", title: "Первое напоминание", status: "active", remindsAt },
+      { id: "2", title: "Второе напоминание", status: "active", remindsAt },
     ];
 
     localStorage.setItem(REMINDERS_STORAGE_KEY, JSON.stringify(reminders));
@@ -103,9 +136,19 @@ describe("reminders storage", () => {
     expect(screen.getByText("Первое напоминание")).toBeInTheDocument();
     expect(screen.getByText("Второе напоминание")).toBeInTheDocument();
 
-    // жмём "Удалить" у первого
-    const deleteButtons = screen.getAllByRole("button", { name: /удалить/i });
+    // жмём "Удалить" у первого (это ActionIcon с title "Удалить")
+    const deleteButtons = screen.getAllByTitle(/удалить/i);
     await user.click(deleteButtons[0]);
+
+    // Подтверждаем удаление в модальном окне (это кнопка Button, а не ActionIcon)
+    const confirmDeleteButtons = screen.getAllByRole("button", { name: /удалить/i });
+    // ActionIcon кнопки имеют title="Удалить", а кнопка подтверждения - это обычная Button с текстом "Удалить"
+    // Находим кнопку, которая не является ActionIcon (у ActionIcon есть специфичные классы или структура)
+    const confirmDeleteButton = confirmDeleteButtons.find((btn) => 
+      btn.textContent === "Удалить" && !btn.getAttribute("title")
+    );
+    expect(confirmDeleteButton).toBeDefined();
+    await user.click(confirmDeleteButton!);
 
     // в UI остался только второй
     expect(screen.queryByText("Первое напоминание")).not.toBeInTheDocument();
@@ -116,7 +159,7 @@ describe("reminders storage", () => {
     expect(stored).not.toBeNull();
 
     const parsed = JSON.parse(stored as string);
-    expect(parsed).toEqual([{ id: "2", title: "Второе напоминание", status: "active" }]);
+    expect(parsed).toEqual([{ id: "2", title: "Второе напоминание", status: "active", remindsAt }]);
   });
 
   afterEach(() => {
