@@ -50,7 +50,6 @@ export async function showNotification(options: NotificationOptions): Promise<vo
     // Создаем уведомление (работает и в браузере, и в PWA)
     const notification = new Notification(options.title, {
       body: options.body,
-      icon: options.icon || "/reminder-app/vite.svg",
       tag: options.tag,
       requireInteraction: true, // Уведомление не исчезнет автоматически
     });
