@@ -12,6 +12,9 @@
 - **Линтинг и форматирование**:
   - ESLint 9 + @eslint/js, typescript-eslint, eslint-plugin-react-hooks, eslint-plugin-react-refresh.
   - Prettier 3.
+- **PWA**:
+  - vite-plugin-pwa с Workbox для кэширования ресурсов.
+  - Базовый путь `/reminder-app/` для GitHub Pages.
 
 ## 2. Структура проекта
 
@@ -22,9 +25,11 @@
   - Доменная фича `reminders` в [`src/features/reminders`](src/features/reminders):
     - Типы: [`types.ts`](src/features/reminders/types.ts).
     - UI страницы: [`RemindersPage.tsx`](src/features/reminders/RemindersPage.tsx), [`RemindersPage.css`](src/features/reminders/RemindersPage.css).
+    - UI модального окна: [`ContextsModal.tsx`](src/features/reminders/ContextsModal.tsx).
     - Хранилище: [`api/storage.ts`](src/features/reminders/api/storage.ts).
     - Доменные хуки: [`hooks/useReminderScheduler.ts`](src/features/reminders/hooks/useReminderScheduler.ts).
     - Утилиты времени: [`lib/time.ts`](src/features/reminders/lib/time.ts).
+    - Утилиты уведомлений: [`lib/notification.ts`](src/features/reminders/lib/notification.ts).
 - Тестовая инфраструктура:
   - Юнит-тесты по тем же путям, что и код, с суффиксом `.test.ts(x)`.
   - Общий тестовый сетап [`src/tests/setup.ts`](src/tests/setup.ts).
@@ -35,16 +40,22 @@
     - `tsconfig.app.json` — настройка для приложения.
     - `tsconfig.node.json` — для node‑скриптов, тестов и конфигов.
 - Конфигурация Vite:
-  - [`vite.config.ts`](vite.config.ts) с React‑плагином `@vitejs/plugin-react`.
+  - [`vite.config.ts`](vite.config.ts) с React‑плагином `@vitejs/plugin-react` и PWA-плагином `vite-plugin-pwa`.
+- CI/CD:
+  - GitHub Actions workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) для деплоя на GitHub Pages.
 
 ## 3. Хранение данных и интеграции
 
 - **Локальное хранилище**:
-  - Браузерный `localStorage` под ключом `remindy:reminders`.
+  - Браузерный `localStorage` под ключом `remindy:reminders` для напоминаний.
+  - Браузерный `localStorage` под ключом `remindy:contexts` для контекстов.
   - Доступ инкапсулирован модулем [`storage.ts`](src/features/reminders/api/storage.ts).
 - **Сторонние сервисы**:
   - На текущем этапе отсутствуют.
   - Архитектура предполагает возможность замены `localStorage` на внешний API без изменений в UI.
+- **Браузерные уведомления**:
+  - Используется стандартный Web Notifications API.
+  - Инкапсулирован в модуле [`notification.ts`](src/features/reminders/lib/notification.ts).
 
 ## 4. Скрипты npm
 
@@ -66,12 +77,16 @@
 - Таймеры напоминаний:
   - Используют `setTimeout` в рамках текущей вкладки браузера.
   - При закрытии вкладки или перезагрузке активные таймеры теряются; при следующем открытии планировщик заново ставит таймеры только для напоминаний в будущем.
+- PWA:
+  - Сервис-воркер генерируется автоматически через `vite-plugin-pwa`.
+  - Кэширование ресурсов настроено через Workbox.
 
 ## 6. Планируемые технологические направления
 
 - **PWA**:
-  - Добавление сервис‑воркера и офлайн‑режима.
+  - Расширение офлайн-режима.
   - Поддержка установки на домашний экран.
+  - Кэширование данных для работы без сети.
 - **Backend / API**:
   - Подключение внешнего хранилища (например, Supabase или собственный REST/GraphQL API).
   - Авторизация и мульти‑устройство.

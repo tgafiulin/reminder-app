@@ -8,8 +8,8 @@
 - Для фичи используется слоистое разбиение:
   - `api` — работа с хранилищем (сейчас `localStorage`, в будущем может быть заменен на backend).
   - `hooks` — доменные хуки, инкапсулирующие бизнес-логику (планировщик напоминаний).
-  - `lib` — утилиты домена (работа со временем).
-  - UI-компоненты страницы — `RemindersPage`.
+  - `lib` — утилиты домена (работа со временем, уведомления).
+  - UI-компоненты страницы — `RemindersPage`, `ContextsModal`.
 
 Верхнеуровневая структура `src`:
 
@@ -24,6 +24,7 @@ src/
     reminders/
       RemindersPage.tsx
       RemindersPage.css
+      ContextsModal.tsx
       types.ts
       api/
         storage.ts
@@ -31,6 +32,7 @@ src/
         useReminderScheduler.ts
       lib/
         time.ts
+        notification.ts
   tests/
     setup.ts
   test-utils.tsx
@@ -55,11 +57,13 @@ src/
 
 Описание доменной сущности `Reminder`:
 
-- `id: string` — уникальный идентификатор;
-- `title: string` — заголовок (обязательное поле);
-- `description?: string` — текстовое описание;
-- `mediaUrl?: string` — ссылка на медиа;
+- `id: ReminderId` — уникальный идентификатор (алиас для `string`).
+- `title: string` — заголовок (обязательное поле).
+- `description?: string` — текстовое описание.
+- `mediaUrl?: string` — ссылка на медиа.
 - `remindsAt?: string` — дата/время напоминания в ISO-строке.
+- `status: ReminderStatus` — статус напоминания (`"active" | "done"`).
+- `context?: string` — контекст/тема для группировки.
 
 Этот файл задает контракт между UI, хранилищем и планировщиком напоминаний.
 
@@ -67,9 +71,13 @@ src/
 
 - [`src/features/reminders/api/storage.ts`](src/features/reminders/api/storage.ts)
 
-Ответственность: абстракция над механизмом хранения напоминаний.
+Ответственность: абстракция над механизмом хранения напоминаний и контекстов.
 
-- `REMINDERS_STORAGE_KEY = "remindy:reminders"` — ключ в `localStorage`.
+- `REMINDERS_STORAGE_KEY = "remindy:reminders"` — ключ для напоминаний в `localStorage`.
+- `CONTEXTS_STORAGE_KEY = "remindy:contexts"` — ключ для контекстов в `localStorage`.
+
+Функции для напоминаний:
+
 - `loadReminders(): Reminder[]`:
   - читает JSON-строку из `localStorage`;
   - безопасно парсит данные:
@@ -81,9 +89,18 @@ src/
   - сохраняет в `localStorage`;
   - логирует ошибку в консоль при неудаче.
 
+Функции для контекстов:
+
+- `loadContexts(): string[]` — загрузка контекстов из localStorage.
+- `saveContexts(contexts: string[]): void` — сохранение контекстов с дедупликацией.
+- `addContext(context: string): void` — добавление нового контекста.
+- `removeContext(context: string): void` — удаление контекста.
+- `updateContext(oldContext: string, newContext: string): void` — переименование контекста.
+- `getAllContexts(reminders: Reminder[]): string[]` — объединение сохраненных контекстов и контекстов из напоминаний.
+
 Важно: UI не знает о деталях `localStorage` и взаимодействует только через этот модуль, что упрощает будущую замену на внешний API.
 
-#### Вспомогательная логика времени
+#### Утилиты времени
 
 - [`src/features/reminders/lib/time.ts`](src/features/reminders/lib/time.ts)
 
@@ -99,6 +116,24 @@ src/
 
 Этот модуль инкапсулирует логику вычисления задержки до напоминания и используется планировщиком.
 
+#### Утилиты уведомлений
+
+- [`src/features/reminders/lib/notification.ts`](src/features/reminders/lib/notification.ts)
+
+Функции для работы с браузерными уведомлениями:
+
+- `requestNotificationPermission(): Promise<NotificationPermission>` — запрос разрешения.
+- `showNotification(options: NotificationOptions): Promise<void>` — показ уведомления.
+- `canShowNotifications(): boolean` — проверка возможности показа.
+- `getNotificationPermission(): NotificationPermission | null` — получение текущего статуса.
+
+Интерфейс `NotificationOptions`:
+
+- `title: string` — заголовок уведомления.
+- `body: string` — текст уведомления.
+- `icon?: string` — иконка.
+- `tag?: string` — тег для замены уведомлений.
+
 #### Планировщик напоминаний
 
 - [`src/features/reminders/hooks/useReminderScheduler.ts`](src/features/reminders/hooks/useReminderScheduler.ts)
@@ -109,16 +144,17 @@ src/
 
 - Использует `useRef` для хранения текущего `timeoutId`.
 - В `useEffect`:
-  - очищает предыдущий таймер при каждом изменении `reminders` или `onTrigger`;
+  - очищает предыдущий таймер при каждом изменении `reminders`;
+  - фильтрует только активные напоминания (`status !== "done"`);
   - фильтрует напоминания с заполненным `remindsAt`;
   - для каждого вычисляет задержку через `getDelayUntil`;
   - отбрасывает `null` (прошлое или некорректное время);
   - сортирует по возрастанию задержки;
   - планирует `setTimeout` на самое ближайшее событие;
-  - при срабатывании таймера вызывает `onTrigger(reminder.id)`;
+  - при срабатывании таймера вызывает `showNotification()` с данными напоминания;
   - в cleanup повторно очищает таймер.
 
-Слой планировщика полностью отделен от UI — он не знает ничего о компонентах и работает только с данными `Reminder` и колбэком.
+Слой планировщика полностью отделен от UI — он не знает ничего о компонентах и работает только с данными `Reminder` и функциями уведомлений.
 
 ### 2.3. Страница напоминаний
 
@@ -131,29 +167,44 @@ src/
 
 - `reminders: Reminder[]` — текущий список напоминаний.
   - Инициализируется вызовом `loadReminders()` с защитой от пустых/битых данных.
+  - Для старых записей без `status` устанавливается значение `"active"`.
 - Поля формы создания:
-  - `title`, `description`, `mediaUrl`, `remindsAt`.
+  - `title`, `remindsAt`, `context`.
 - Поля редактирования:
-  - `editingId`, `editingTitle`, `editingDescription`, `editingMediaUrl`, `editingRemindsAt`.
-- `triggeredReminderId` — id напоминания, которое только что сработало (для подсветки и баннера).
+  - `editingId`, `editingTitle`, `editingRemindsAt`, `editingContext`.
+- `contextsModalOpened` — состояние модального окна управления контекстами.
+- `contextsList: string[]` — список доступных контекстов.
+- `showPermissionBanner` — показ баннера запроса разрешения на уведомления.
+- `dismissedPermissionBanner` — флаг скрытия баннера.
+- `notificationPermission` — текущий статус разрешения на уведомления.
 
 Ключевая логика:
 
 - Инициализация: при первом рендере читает данные из localStorage через `loadReminders`.
-- Подписка на планировщик:
-  - `useReminderScheduler(reminders, (id) => setTriggeredReminderId(id))`.
-- Сохранение в localStorage:
-  - `useEffect` наблюдает за `reminders` и вызывает `saveReminders(reminders)` при каждом изменении.
+- Подписка на планировщик: `useReminderScheduler(reminders)`.
+- Сохранение в localStorage: `useEffect` наблюдает за `reminders` и вызывает `saveReminders(reminders)` при каждом изменении.
+- Управление контекстами:
+  - Загрузка списка контекстов через `getAllContexts(reminders)`.
+  - Обновление списка при изменении напоминаний.
+  - Обработка событий переименования и удаления контекстов с синхронизацией напоминаний.
+- Управление уведомлениями:
+  - Проверка разрешения при загрузке.
+  - Показ баннера запроса разрешения.
+  - Запрос разрешения по кнопке.
+  - Сохранение состояния скрытия баннера в localStorage.
 - Создание напоминания:
   - Валидация: пустой `title` блокирует создание.
   - Обработка `remindsAt`:
     - парсинг введенного значения `datetime-local` в `Date`;
     - проверка валидности;
     - хранение в ISO-формате (`toISOString()`), если валидно.
+  - Установка статуса `"active"` по умолчанию.
   - Очищает поля формы после успешного добавления.
 - Удаление напоминания:
   - фильтрация по `id`;
   - сброс режима редактирования, если удаляется редактируемый элемент.
+- Переключение статуса:
+  - `handleToggleStatus` меняет статус между `"active"` и `"done"`.
 - Редактирование:
   - `handleStartEdit`:
     - переносит поля напоминания в `editing*`;
@@ -163,22 +214,62 @@ src/
     - обработка `editingRemindsAt` аналогично созданию;
     - обновление нужного элемента в массиве.
   - `handleCancelEdit` — сброс `editingId`.
+- Группировка напоминаний:
+  - Напоминания группируются по полю `context`.
+  - Контекст без значения группируется как "Без контекста".
+  - Группы сортируются по алфавиту.
 
 UI-слой:
 
-- Использует компоненты Mantine (`Card`, `TextInput`, `Textarea`, `Stack`, `Group`, `Button`, `Text`).
+- Использует компоненты Mantine (`Card`, `TextInput`, `Textarea`, `Stack`, `Group`, `Button`, `Text`, `Checkbox`, `Badge`, `Autocomplete`, `ActionIcon`, `Alert`, `Title`).
 - Делит экран на два блока:
   - Левая колонка — форма создания напоминания.
-  - Правая колонка — список напоминаний, баннер срабатывания и карточки.
+  - Правая колонка — список напоминаний, баннер запроса разрешений и карточки.
 - В карточках:
   - режим отображения/редактирования;
+  - чекбокс для переключения статуса;
+  - визуальная индикация выполненных (зачёркнутый текст, бейдж "Выполнено");
   - вывод даты `remindsAt` через `toLocaleString`;
-  - опциональный вывод описания и ссылки-на медиаресурс;
-  - подсветка сработавшего напоминания (цвет границы, тень, текстовый маркер).
+  - вывод контекста в заголовке группы;
+  - кнопки редактирования и удаления.
 
 CSS:
 
 - [`RemindersPage.css`](src/features/reminders/RemindersPage.css) отвечает за базовую раскладку страницы и отступы (двухколоночный layout и т.п.).
+
+### 2.4. Модальное окно управления контекстами
+
+- [`src/features/reminders/ContextsModal.tsx`](src/features/reminders/ContextsModal.tsx)
+
+Ответственность: предоставляет интерфейс для управления контекстами.
+
+Основные элементы состояния:
+
+- `editingId` — id редактируемого контекста.
+- `editingValue` — значение редактируемого контекста.
+- `newContext` — значение для создания нового контекста.
+
+Ключевая логика:
+
+- Загрузка контекстов: объединяет сохраненные контексты и контексты из напоминаний.
+- Создание контекста:
+  - Валидация непустого значения.
+  - Добавление через `addContext()`.
+  - Обновление UI через `onContextUpdate()`.
+- Редактирование контекста:
+  - Переключение в режим редактирования.
+  - Сохранение через `updateContext()`.
+  - Синхронизация с напоминаниями через `onContextRenamed()`.
+- Удаление контекста:
+  - Удаление через `removeContext()`.
+  - Синхронизация с напоминаниями через `onContextDeleted()` (очистка поля `context`).
+
+UI-слой:
+
+- Использует компоненты Mantine (`Modal`, `Stack`, `TextInput`, `Button`, `Group`, `Text`, `ActionIcon`, `Divider`).
+- Два блока:
+  - Создание нового контекста.
+  - Список существующих контекстов с кнопками редактирования и удаления.
 
 ## 3. Слои и зависимости
 
@@ -189,10 +280,12 @@ CSS:
 - UI:
   - [`App.tsx`](src/App.tsx)
   - [`RemindersPage.tsx`](src/features/reminders/RemindersPage.tsx)
+  - [`ContextsModal.tsx`](src/features/reminders/ContextsModal.tsx)
   - CSS-стили и компоненты Mantine.
 - Доменная логика:
   - [`useReminderScheduler.ts`](src/features/reminders/hooks/useReminderScheduler.ts)
   - [`time.ts`](src/features/reminders/lib/time.ts)
+  - [`notification.ts`](src/features/reminders/lib/notification.ts)
   - [`types.ts`](src/features/reminders/types.ts)
 - Хранилище:
   - [`storage.ts`](src/features/reminders/api/storage.ts)
@@ -210,25 +303,32 @@ flowchart TD
   subgraph UI
     A[App]
     B[RemindersPage]
+    C[ContextsModal]
   end
 
   subgraph Domain
-    C[types Reminder]
-    D[useReminderScheduler]
-    E[getDelayUntil]
+    D[types Reminder]
+    E[useReminderScheduler]
+    F[getDelayUntil]
+    G[notification]
   end
 
   subgraph Storage
-    F[storage localStorage]
+    H[storage localStorage]
   end
 
   A --> B
   B --> C
   B --> D
-  B --> F
-  D --> C
-  D --> E
-  F --> C
+  B --> E
+  B --> G
+  B --> H
+  C --> D
+  C --> H
+  E --> D
+  E --> F
+  E --> G
+  H --> D
 ```
 
 ## 4. Тесты
@@ -256,14 +356,21 @@ flowchart TD
 
 ## 5. Инфраструктура и сборка
 
-- [`vite.config.ts`](vite.config.ts) — минимальная конфигурация Vite:
+- [`vite.config.ts`](vite.config.ts) — конфигурация Vite с PWA:
   - React-плагин `@vitejs/plugin-react`.
+  - PWA-плагин `vite-plugin-pwa`:
+    - Manifest с названием "Remindy", иконками, цветовой схемой.
+    - Workbox для кэширования ресурсов.
+    - Runtime кэширование для Google Fonts.
+    - Базовый путь `/reminder-app/` для GitHub Pages.
 - TypeScript:
   - [`tsconfig.json`](tsconfig.json) использует `references` на `tsconfig.app.json` и `tsconfig.node.json`.
 - ESLint / Prettier:
   - [`eslint.config.js`](eslint.config.js)
   - [`.prettierrc`](.prettierrc)
   - [`.prettierignore`](.prettierignore)
+- GitHub Actions:
+  - [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) — автоматический деплой на GitHub Pages.
 
 ## 6. Готовность к будущему развитию
 
@@ -277,7 +384,8 @@ flowchart TD
   - при подключении backend можно заменить реализацию или добавить новые функции, не ломая UI-код.
 - **PWA и офлайн**:
   - Vite и разделение по слоям позволяют относительно просто добавить сервис-воркера и кэширование ресурсов;
-  - локальное хранение напоминаний уже реализовано.
+  - локальное хранение напоминаний уже реализовано;
+  - PWA инфраструктура уже настроена с базовым кэшированием.
 
 Этот файл должен обновляться при:
 

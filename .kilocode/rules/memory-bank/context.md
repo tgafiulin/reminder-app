@@ -3,24 +3,76 @@
 ## 1. Текущий фокус работ
 
 - Базовое SPA Remindy на React + Vite + TypeScript реализовано с одной доменной фичей `reminders`.
-- Основные пользовательские сценарии (создание, просмотр, редактирование, удаление напоминаний, сохранение в localStorage и планировщик по времени) уже работают.
-- Для фичи `reminders` есть выделенные слои:
-  - UI страница [`RemindersPage.tsx`](src/features/reminders/RemindersPage.tsx);
-  - хранилище [`storage.ts`](src/features/reminders/api/storage.ts);
-  - доменный хук планировщика [`useReminderScheduler.ts`](src/features/reminders/hooks/useReminderScheduler.ts);
-  - утилита работы со временем [`time.ts`](src/features/reminders/lib/time.ts).
+- Основные пользовательские сценарии (создание, просмотр, редактирование, удаление напоминаний, сохранение в localStorage и планировщик по времени) работают.
+- Добавлена поддержка контекстов для группировки напоминаний по темам/проектам.
+- Реализована система статусов напоминаний (active/done) с визуальной индикацией.
+- Интегрированы браузерные уведомления для напоминаний по времени.
+- Настроена PWA инфраструктура с сервис-воркером и манифестом.
+- Настроен автоматический деплой на GitHub Pages через GitHub Actions.
 
 ## 2. Недавние изменения
 
-- Инициализирован Memory Bank в `.kilocode/rules/memory-bank`:
-  - обновлен базовый обзор продукта в [`brief.md`](.kilocode/rules/memory-bank/brief.md);
-  - описаны цели и UX-поведение в [`product.md`](.kilocode/rules/memory-bank/product.md);
-  - зафиксирована архитектура и структура проекта в [`architecture.md`](.kilocode/rules/memory-bank/architecture.md);
-  - описан технический стек и инфраструктура в [`tech.md`](.kilocode/rules/memory-bank/tech.md).
+### 2.1. Расширение доменной модели
+
+- Добавлен тип `ReminderId` как алиас для `string`.
+- Добавлен тип `ReminderStatus` с значениями `"active" | "done"`.
+- Добавлено поле `status: ReminderStatus` в тип `Reminder` для отслеживания выполнения.
+- Добавлено поле `context?: string` в тип `Reminder` для группировки по темам.
+
+### 2.2. Новые модули
+
+- [`src/features/reminders/lib/notification.ts`](src/features/reminders/lib/notification.ts) — функции для работы с браузерными уведомлениями:
+  - `requestNotificationPermission()` — запрос разрешения на уведомления.
+  - `showNotification()` — показ уведомления.
+  - `canShowNotifications()` — проверка возможности показа.
+  - `getNotificationPermission()` — получение текущего статуса.
+
+- [`src/features/reminders/ContextsModal.tsx`](src/features/reminders/ContextsModal.tsx) — модальное окно для управления контекстами:
+  - Создание новых контекстов.
+  - Редактирование существующих контекстов.
+  - Удаление контекстов.
+  - Синхронизация с напоминаниями (переименование и удаление обновляет связанные напоминания).
+
+### 2.3. Расширение хранилища
+
+- Добавлен ключ `CONTEXTS_STORAGE_KEY = "remindy:contexts"` для хранения контекстов.
+- Добавлены функции для работы с контекстами в [`storage.ts`](src/features/reminders/api/storage.ts):
+  - `loadContexts()` — загрузка контекстов из localStorage.
+  - `saveContexts()` — сохранение контекстов.
+  - `addContext()` — добавление нового контекста.
+  - `removeContext()` — удаление контекста.
+  - `updateContext()` — переименование контекста.
+  - `getAllContexts()` — объединение сохраненных контекстов и контекстов из напоминаний.
+
+### 2.4. Изменения в UI
+
+- В [`RemindersPage.tsx`](src/features/reminders/RemindersPage.tsx):
+  - Добавлено поле `context` в форму создания напоминаний с `Autocomplete`.
+  - Добавлена кнопка управления контекстами (иконка настроек).
+  - Добавлен баннер запроса разрешения на уведомления с возможностью скрыть.
+  - Реализована группировка напоминаний по контексту.
+  - Добавлен чекбокс для переключения статуса (active/done).
+  - Визуальная индикация выполненных напоминаний (зачёркнутый текст, бейдж "Выполнено").
+
+### 2.5. Изменения в планировщике
+
+- В [`useReminderScheduler.ts`](src/features/reminders/hooks/useReminderScheduler.ts):
+  - Теперь фильтрует только активные напоминания (`status !== "done"`).
+  - Использует `showNotification()` для показа уведомлений при срабатывании таймера.
+
+### 2.6. PWA и деплой
+
+- Добавлен плагин `vite-plugin-pwa` в [`package.json`](package.json).
+- Настроена PWA конфигурация в [`vite.config.ts`](vite.config.ts):
+  - Manifest с названием "Remindy", иконками, цветовой схемой.
+  - Workbox для кэширования ресурсов.
+  - Runtime кэширование для Google Fonts.
+  - Базовый путь `/reminder-app/` для GitHub Pages.
+- Добавлен GitHub Actions workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) для автоматического деплоя на GitHub Pages.
 
 ## 3. Ближайшие шаги по развитию
 
-- Расширять доменную модель и UI вокруг напоминаний (статусы, приоритеты, группировка по темам/поездкам).
+- Расширять доменную модель и UI вокруг напоминаний (приоритеты, теги, вложенность).
 - Готовить архитектуру к появлению дополнительных представлений (календарь, таймлайн) на основе существующего доменного слоя.
 - Прорабатывать PWA-аспекты: офлайн-режим, установка на домашний экран, кэширование.
 - Планировать интеграцию с внешним хранилищем (backend или BaaS) без ломки текущего UI.
