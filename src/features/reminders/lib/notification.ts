@@ -34,19 +34,36 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
  * Показывает уведомление
  */
 export async function showNotification(options: NotificationOptions): Promise<void> {
+  alert("📱 Шаг 2: Проверка поддержки Notification API");
+
   if (!("Notification" in window)) {
+    alert("❌ Шаг 2.1: Notification API не поддерживается");
     return;
   }
 
+  alert("✅ Шаг 2.2: Notification API поддерживается");
+
   // Если разрешения нет, пытаемся запросить
   if (Notification.permission !== "granted") {
+    alert(`📱 Шаг 3: Текущее разрешение: ${Notification.permission}`);
+
     const permission = await requestNotificationPermission();
+
+    alert(`📱 Шаг 3.1: Результат запроса разрешения: ${permission}`);
+
     if (permission !== "granted") {
+      alert("❌ Шаг 3.2: Разрешение не получено, уведомление не будет показано");
       return;
     }
+
+    alert("✅ Шаг 3.3: Разрешение получено");
+  } else {
+    alert("✅ Шаг 3: Разрешение уже есть (granted)");
   }
 
   try {
+    alert("📱 Шаг 4: Создание уведомления...");
+
     // Создаем уведомление (работает и в браузере, и в PWA)
     const notification = new Notification(options.title, {
       body: options.body,
@@ -54,12 +71,15 @@ export async function showNotification(options: NotificationOptions): Promise<vo
       requireInteraction: true, // Уведомление не исчезнет автоматически
     });
 
+    alert("✅ Шаг 4.1: Уведомление создано успешно");
+
     // При клике на уведомление фокусируем окно
     notification.onclick = () => {
       window.focus();
       notification.close();
     };
-  } catch {
+  } catch (error) {
+    alert(`❌ Шаг 4: Ошибка при создании уведомления: ${error}`);
     // Ошибка при создании уведомления
   }
 }

@@ -110,10 +110,14 @@ export function RemindersPage() {
   };
 
   const handleTestNotification = async () => {
+    alert("📱 Шаг 1: Начало теста уведомления");
+
     await showNotification({
       title: "Тестовое уведомление",
       body: "Это тестовое уведомление для проверки работы на телефоне",
     });
+
+    alert("✅ Шаг 5: Тест уведомления завершен");
   };
 
   const handleDeleteReminder = (id: string) => {
