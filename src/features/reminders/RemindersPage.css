@@ -40,7 +40,9 @@
 /* Floating Action Button (скрыта на десктопе) */
 .reminders-page__fab {
   display: none;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .reminders-page__fab:hover {
@@ -170,37 +172,19 @@
   .reminders-page__fab {
     bottom: 16px !important;
     right: 16px !important;
-    width: 56px !important;
-    height: 56px !important;
-    border-radius: 50% !important;
-    padding: 0 !important;
-    min-width: 56px !important;
-    max-width: 56px !important;
-    justify-content: center !important;
+  }
+
+  /* Убеждаемся, что содержимое кнопки видимо */
+  .reminders-page__fab .mantine-Button-inner {
+    display: flex !important;
     align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 100% !important;
   }
 
-  /* Скрываем текст на очень маленьких экранах - скрываем все кроме leftSection */
-  .reminders-page__fab > *:not(.mantine-Button-leftSection) {
-    display: none !important;
-  }
-  
-  /* Альтернативный способ - скрываем через font-size и overflow */
-  .reminders-page__fab {
-    font-size: 0 !important;
-    overflow: hidden !important;
-  }
-  
-  .reminders-page__fab .mantine-Button-leftSection {
-    font-size: initial !important;
-  }
-
-  .reminders-page__fab .mantine-Button-leftSection {
-    margin-right: 0 !important;
-    margin-left: 0 !important;
-  }
-
-  .reminders-page__fab .mantine-Button-leftSection svg {
+  .reminders-page__fab svg {
+    display: block !important;
     width: 24px !important;
     height: 24px !important;
   }

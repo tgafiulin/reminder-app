@@ -13,6 +13,7 @@ import {
   Title,
   Modal,
 } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import {
   IconSettings,
   IconPlus,
@@ -52,6 +53,7 @@ export function RemindersPage() {
   const [contextsModalOpened, setContextsModalOpened] = useState(false);
   const [formModalOpened, setFormModalOpened] = useState(false);
   const [contextsList, setContextsList] = useState<string[]>([]);
+  const isSmallScreen = useMediaQuery("(max-width: 480px)");
 
   useReminderScheduler(reminders);
 
@@ -404,24 +406,64 @@ export function RemindersPage() {
       </div>
 
       {/* Floating Action Button */}
-      <Button
-        className="reminders-page__fab"
-        onClick={() => setFormModalOpened(true)}
-        size="xl"
-        radius="xl"
-        variant="gradient"
-        gradient={{ from: "blue", to: "cyan", deg: 90 }}
-        leftSection={<IconPlus size={24} />}
-        style={{
-          position: "fixed",
-          bottom: 24,
-          right: 24,
-          zIndex: 1000,
-          boxShadow: "0 4px 12px rgba(34, 139, 230, 0.4)",
-        }}
-      >
-        Новое напоминание
-      </Button>
+      {isSmallScreen ? (
+        <Button
+          className="reminders-page__fab"
+          onClick={() => setFormModalOpened(true)}
+          size="xl"
+          radius="xl"
+          variant="gradient"
+          gradient={{ from: "blue", to: "cyan", deg: 90 }}
+          style={{
+            position: "fixed",
+            bottom: 16,
+            right: 16,
+            zIndex: 1000,
+            boxShadow: "0 4px 12px rgba(34, 139, 230, 0.4)",
+            width: 56,
+            height: 56,
+            minWidth: 56,
+            maxWidth: 56,
+            padding: 0,
+            borderRadius: "50%",
+          }}
+          styles={{
+            root: {
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            },
+            inner: {
+              display: "flex !important",
+              alignItems: "center !important",
+              justifyContent: "center !important",
+              width: "100% !important",
+              height: "100% !important",
+            },
+          }}
+        >
+          <IconPlus size={24} style={{ display: "block" }} />
+        </Button>
+      ) : (
+        <Button
+          className="reminders-page__fab"
+          onClick={() => setFormModalOpened(true)}
+          size="xl"
+          radius="xl"
+          variant="gradient"
+          gradient={{ from: "blue", to: "cyan", deg: 90 }}
+          leftSection={<IconPlus size={24} />}
+          style={{
+            position: "fixed",
+            bottom: 24,
+            right: 24,
+            zIndex: 1000,
+            boxShadow: "0 4px 12px rgba(34, 139, 230, 0.4)",
+          }}
+        >
+          Новое напоминание
+        </Button>
+      )}
 
       {/* Модальное окно с формой создания напоминания */}
       <Modal
