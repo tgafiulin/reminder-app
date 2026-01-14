@@ -16,8 +16,13 @@ describe("reminders storage", () => {
 
   it("loads reminders from valid JSON", () => {
     const reminders: Reminder[] = [
-      { id: "1", title: "Выполнить тест", status: "active" },
-      { id: "2", title: "Выполнить тест с разными элементами", status: "active" },
+      { id: "1", title: "Выполнить тест", remindsAt: "2024-01-01T10:00:00Z", status: "active" },
+      {
+        id: "2",
+        title: "Выполнить тест с разными элементами",
+        remindsAt: "2024-01-02T10:00:00Z",
+        status: "active",
+      },
     ];
     localStorage.setItem(REMINDERS_STORAGE_KEY, JSON.stringify(reminders));
 
@@ -32,8 +37,13 @@ describe("reminders storage", () => {
 
   it("saves reminders as JSON string", () => {
     const reminders: Reminder[] = [
-      { id: "1", title: "Выполнить тест", status: "active" },
-      { id: "2", title: "Выполнить тест с разными элементами", status: "active" },
+      { id: "1", title: "Выполнить тест", remindsAt: "2024-01-01T10:00:00Z", status: "active" },
+      {
+        id: "2",
+        title: "Выполнить тест с разными элементами",
+        remindsAt: "2024-01-02T10:00:00Z",
+        status: "active",
+      },
     ];
 
     saveReminders(reminders);
