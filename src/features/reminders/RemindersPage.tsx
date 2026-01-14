@@ -717,8 +717,8 @@ export function RemindersPage() {
               onChange={setContextName}
               data={contextsList}
               leftSection={<IconTag size={18} />}
-              size="md"
               style={{ flex: 1, minWidth: 0 }}
+              comboboxProps={{ zIndex: 10001 }}
               styles={{
                 label: {
                   fontWeight: 600,
