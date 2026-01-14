@@ -10,9 +10,8 @@ import {
   Badge,
   Autocomplete,
   ActionIcon,
-  Divider,
   Title,
-  Alert,
+  Modal,
 } from "@mantine/core";
 import {
   IconSettings,
@@ -20,7 +19,10 @@ import {
   IconCalendar,
   IconTag,
   IconNote,
-  IconBell,
+  IconClock,
+  IconEdit,
+  IconTrash,
+  IconCheck,
 } from "@tabler/icons-react";
 import type { Reminder } from "./types";
 
@@ -28,11 +30,6 @@ import "./RemindersPage.css";
 import { loadReminders, saveReminders, getAllContexts } from "./api/storage";
 import { useReminderScheduler } from "./hooks/useReminderScheduler";
 import { ContextsModal } from "./ContextsModal";
-import {
-  requestNotificationPermission,
-  getNotificationPermission,
-  showNotification,
-} from "./lib/notification";
 
 export function RemindersPage() {
   const [reminders, setReminders] = useState<Reminder[]>(() => {
@@ -53,72 +50,14 @@ export function RemindersPage() {
   const [editingRemindsAt, setEditingRemindsAt] = useState("");
   const [editingContext, setEditingContext] = useState("");
   const [contextsModalOpened, setContextsModalOpened] = useState(false);
+  const [formModalOpened, setFormModalOpened] = useState(false);
   const [contextsList, setContextsList] = useState<string[]>([]);
-  const [showPermissionBanner, setShowPermissionBanner] = useState(false);
-  const [dismissedPermissionBanner, setDismissedPermissionBanner] = useState(false);
-  const [notificationPermission, setNotificationPermission] =
-    useState<NotificationPermission | null>(null);
 
   useReminderScheduler(reminders);
 
   useEffect(() => {
     setContextsList(getAllContexts(reminders));
   }, [reminders]);
-
-  // Проверяем разрешение на уведомления при загрузке
-  useEffect(() => {
-    const permission = getNotificationPermission();
-    setNotificationPermission(permission);
-    // Показываем баннер, если API поддерживается, уведомления не включены и пользователь не скрыл баннер
-    if ("Notification" in window && permission !== "granted" && !dismissedPermissionBanner) {
-      setShowPermissionBanner(true);
-    } else {
-      setShowPermissionBanner(false);
-    }
-  }, [dismissedPermissionBanner]);
-
-  // Сохраняем состояние скрытия баннера в localStorage
-  useEffect(() => {
-    if (dismissedPermissionBanner) {
-      localStorage.setItem("remindy:dismissedNotificationBanner", "true");
-    }
-  }, [dismissedPermissionBanner]);
-
-  // Восстанавливаем состояние скрытия баннера при загрузке
-  useEffect(() => {
-    const dismissed = localStorage.getItem("remindy:dismissedNotificationBanner");
-    if (dismissed === "true") {
-      setDismissedPermissionBanner(true);
-    }
-  }, []);
-
-  const handleRequestNotificationPermission = async () => {
-    const permission = await requestNotificationPermission();
-    setNotificationPermission(permission);
-    if (permission !== "granted") {
-      console.warn("Разрешение на уведомления не получено");
-    }
-    // Скрываем баннер, если разрешение получено
-    if (permission === "granted") {
-      setShowPermissionBanner(false);
-    }
-  };
-
-  const handleDismissBanner = () => {
-    setDismissedPermissionBanner(true);
-    setShowPermissionBanner(false);
-  };
-
-  const handleTestNotification = async () => {
-    alert("📱 Шаг 1: Начало теста уведомления");
-
-    await showNotification({
-      title: "Тестовое уведомление",
-      body: "Это тестовое уведомление для проверки работы на телефоне",
-    });
-
-    alert("✅ Шаг 5: Тест уведомления завершен");
-  };
 
   const handleDeleteReminder = (id: string) => {
     setReminders(reminders.filter((r) => r.id !== id));
@@ -164,6 +103,7 @@ export function RemindersPage() {
     setTitle("");
     setRemindsAt("");
     setContext("");
+    setFormModalOpened(false);
   };
 
   const handleStartEdit = (reminder: Reminder) => {
@@ -220,7 +160,7 @@ export function RemindersPage() {
   // Группировка напоминаний по контексту
   const groupedReminders = Array.from(
     reminders.reduce<Map<string, Reminder[]>>((map, reminder) => {
-      const key = reminder.context?.trim() || "Без контекста";
+      const key = reminder.context?.trim() || "";
       const existing = map.get(key);
       if (existing) {
         existing.push(reminder);
@@ -229,175 +169,78 @@ export function RemindersPage() {
       }
       return map;
     }, new Map())
-  ).sort(([a], [b]) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+  ).sort(([a], [b]) => {
+    // Группы без контекста (пустая строка) идут первыми
+    if (a === "") return -1;
+    if (b === "") return 1;
+    return a.localeCompare(b, undefined, { sensitivity: "base" });
+  });
 
   return (
     <div className="reminders-page">
       <div className="reminders-page__container">
-        <Card
-          shadow="lg"
-          radius="lg"
-          padding="xl"
-          w={380}
-          style={{
-            background: "linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)",
-            border: "1px solid #e9ecef",
-          }}
-        >
-          <Stack gap="lg">
-            <div>
-              <Title order={3} fw={700} mb={4} c="dark.8">
-                Новое напоминание
-              </Title>
-              <Text size="sm" c="dimmed">
-                Создайте новое напоминание для важных дел
-              </Text>
-            </div>
-
-            <Divider />
-
-            <Stack gap="md">
-              <TextInput
-                label="Заголовок"
-                placeholder="Введите заголовок напоминания"
-                value={title}
-                onChange={(e) => setTitle(e.currentTarget.value)}
-                leftSection={<IconNote size={18} />}
-                size="md"
-                required
-                styles={{
-                  label: {
-                    fontWeight: 600,
-                    marginBottom: 8,
-                  },
-                }}
-              />
-
-              <Group gap="xs" align="flex-end">
-                <Autocomplete
-                  label="Контекст / тема"
-                  placeholder="Например: Поездка в Стамбул"
-                  value={context}
-                  onChange={setContext}
-                  data={contextsList}
-                  leftSection={<IconTag size={18} />}
-                  size="md"
-                  style={{ flex: 1 }}
-                  styles={{
-                    label: {
-                      fontWeight: 600,
-                      marginBottom: 8,
-                    },
-                  }}
-                />
-                <ActionIcon
-                  variant="light"
-                  color="blue"
-                  size="lg"
-                  onClick={() => setContextsModalOpened(true)}
-                  title="Управление контекстами"
-                  style={{ marginBottom: 4 }}
-                >
-                  <IconSettings size={20} />
-                </ActionIcon>
-              </Group>
-
-              <TextInput
-                label="Когда напомнить"
-                type="datetime-local"
-                value={remindsAt}
-                onChange={(e) => setRemindsAt(e.currentTarget.value)}
-                leftSection={<IconCalendar size={18} />}
-                size="md"
-                styles={{
-                  label: {
-                    fontWeight: 600,
-                    marginBottom: 8,
-                  },
-                }}
-              />
-            </Stack>
-
-            <Divider />
-
+        <div className="reminders-page__right">
+          <Group justify="space-between" align="center" mb="md" wrap="wrap">
+            <Title order={2} fw={700} c="dark.8">
+              Мои напоминания
+            </Title>
             <Button
-              onClick={addNewReminder}
-              size="md"
+              className="reminders-page__header-button"
+              onClick={() => setFormModalOpened(true)}
               leftSection={<IconPlus size={18} />}
-              fullWidth
               variant="gradient"
               gradient={{ from: "blue", to: "cyan", deg: 90 }}
-              disabled={!title.trim()}
-              style={{
-                fontWeight: 600,
-                height: 44,
-              }}
+              size="md"
             >
-              Создать напоминание
-            </Button>
-          </Stack>
-        </Card>
-        <div className="reminders-page__right">
-          {showPermissionBanner && (
-            <Alert
-              variant="light"
-              color={notificationPermission === "denied" ? "orange" : "blue"}
-              title={
-                notificationPermission === "denied"
-                  ? "Уведомления отключены"
-                  : "Включите уведомления"
-              }
-              icon={<IconBell size={20} />}
-              mb="md"
-            >
-              <Text size="sm" mb="xs">
-                {notificationPermission === "denied"
-                  ? "Вы отклонили разрешение на уведомления. Чтобы включить их, зайдите в настройки сайта в браузере."
-                  : "Разрешите уведомления, чтобы получать напоминания о важных событиях."}
-              </Text>
-              <Group gap="xs">
-                {notificationPermission !== "denied" && (
-                  <Button size="xs" onClick={handleRequestNotificationPermission}>
-                    Разрешить уведомления
-                  </Button>
-                )}
-                <Button size="xs" variant="subtle" onClick={handleDismissBanner}>
-                  Больше не показывать
-                </Button>
-              </Group>
-            </Alert>
-          )}
-          <Group justify="space-between" align="center" mb="xs">
-            <Text fw={600}>Мои напоминания</Text>
-            <Button
-              size="xs"
-              variant="light"
-              color="blue"
-              onClick={handleTestNotification}
-              leftSection={<IconBell size={16} />}
-            >
-              Тест уведомления
+              Добавить
             </Button>
           </Group>
-          <Stack gap="xs" mt="sm">
+          <Stack gap="lg" mt="sm">
             {groupedReminders.map(([groupName, groupReminders]) => (
-              <div key={groupName}>
-                <Text fw={500} size="sm" mb={4}>
-                  {groupName}
-                </Text>
-                <Stack gap="xs">
+              <div key={groupName || "__no_context__"} className="reminders-group">
+                {groupName && (
+                  <Group gap={8} mb="md" className="reminders-group__header">
+                    <IconTag size={18} style={{ color: "var(--mantine-color-blue-6)" }} />
+                    <Text fw={600} size="md" c="dark.7">
+                      {groupName}
+                    </Text>
+                  </Group>
+                )}
+                <Stack gap="md">
                   {groupReminders.map((reminder) => {
                     const isEditing = editingId === reminder.id;
                     const isDone = reminder.status === "done";
+                    const remindsAtDate = reminder.remindsAt ? new Date(reminder.remindsAt) : null;
+                    const isOverdue =
+                      remindsAtDate && !isDone && remindsAtDate.getTime() < Date.now();
 
                     return (
-                      <Card key={reminder.id} radius="md" withBorder shadow="xs">
+                      <Card
+                        key={reminder.id}
+                        className={`reminder-card ${isDone ? "reminder-card--done" : ""} ${isOverdue ? "reminder-card--overdue" : ""}`}
+                        radius="lg"
+                        padding="md"
+                        withBorder
+                        shadow="sm"
+                        style={{
+                          transition: "all 0.2s ease",
+                          background: isDone
+                            ? "linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)"
+                            : "linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)",
+                          borderColor: isOverdue
+                            ? "var(--mantine-color-red-3)"
+                            : isDone
+                              ? "var(--mantine-color-gray-3)"
+                              : "var(--mantine-color-gray-2)",
+                        }}
+                      >
                         {isEditing ? (
-                          <Stack gap={4}>
+                          <Stack gap="md">
                             <TextInput
                               label="Заголовок"
                               value={editingTitle}
                               onChange={(e) => setEditingTitle(e.currentTarget.value)}
+                              leftSection={<IconNote size={18} />}
                             />
                             <Group gap="xs" align="flex-end">
                               <Autocomplete
@@ -406,6 +249,7 @@ export function RemindersPage() {
                                 onChange={setEditingContext}
                                 data={contextsList}
                                 style={{ flex: 1 }}
+                                leftSection={<IconTag size={18} />}
                               />
                               <ActionIcon
                                 variant="light"
@@ -420,75 +264,112 @@ export function RemindersPage() {
                               type="datetime-local"
                               value={editingRemindsAt}
                               onChange={(e) => setEditingRemindsAt(e.currentTarget.value)}
+                              leftSection={<IconCalendar size={18} />}
                             />
-                            <Group justify="flex-end" mt={4}>
-                              <Button variant="subtle" size="xs" onClick={handleCancelEdit}>
+                            <Group justify="flex-end" mt="xs">
+                              <Button variant="subtle" size="sm" onClick={handleCancelEdit}>
                                 Отмена
                               </Button>
-                              <Button size="xs" onClick={() => handleSaveEdit(reminder.id)}>
+                              <Button size="sm" onClick={() => handleSaveEdit(reminder.id)}>
                                 Сохранить
                               </Button>
                             </Group>
                           </Stack>
                         ) : (
-                          <>
-                            <Group justify="space-between" mb={4} align="flex-start">
-                              <Group gap={8}>
+                          <Stack gap="sm">
+                            <Group justify="space-between" align="flex-start" wrap="nowrap">
+                              <Group gap="md" align="flex-start" style={{ flex: 1 }} wrap="nowrap">
                                 <Checkbox
-                                  size="sm"
+                                  size="md"
                                   checked={isDone}
                                   onChange={() => handleToggleStatus(reminder.id)}
                                   aria-label={
                                     isDone ? "Отметить как активное" : "Отметить как выполненное"
                                   }
+                                  styles={{
+                                    input: {
+                                      cursor: "pointer",
+                                    },
+                                  }}
                                 />
-                                <div>
-                                  <Group gap={8}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <Group gap="xs" align="center" mb={4} wrap="nowrap">
                                     <Text
                                       fw={600}
-                                      style={
-                                        isDone
-                                          ? {
-                                              textDecoration: "line-through",
-                                              opacity: 0.7,
-                                            }
-                                          : undefined
-                                      }
+                                      size="md"
+                                      style={{
+                                        textDecoration: isDone ? "line-through" : "none",
+                                        opacity: isDone ? 0.6 : 1,
+                                        color: isOverdue ? "var(--mantine-color-red-7)" : undefined,
+                                      }}
                                     >
                                       {reminder.title}
                                     </Text>
                                     {isDone && (
-                                      <Badge color="gray" size="xs" variant="light">
+                                      <Badge
+                                        color="gray"
+                                        size="sm"
+                                        variant="light"
+                                        leftSection={<IconCheck size={12} />}
+                                      >
                                         Выполнено
                                       </Badge>
                                     )}
+                                    {isOverdue && !isDone && (
+                                      <Badge color="red" size="sm" variant="light">
+                                        Просрочено
+                                      </Badge>
+                                    )}
                                   </Group>
-                                  {reminder.remindsAt && (
-                                    <Text size="xs" c="dimmed">
-                                      Напомнить: {new Date(reminder.remindsAt).toLocaleString()}
-                                    </Text>
+                                  {remindsAtDate && (
+                                    <Group gap={6} align="center">
+                                      <IconClock
+                                        size={14}
+                                        style={{
+                                          color: isOverdue
+                                            ? "var(--mantine-color-red-6)"
+                                            : "var(--mantine-color-gray-6)",
+                                        }}
+                                      />
+                                      <Text
+                                        size="sm"
+                                        c={isOverdue ? "red" : "dimmed"}
+                                        fw={isOverdue ? 500 : 400}
+                                      >
+                                        {remindsAtDate.toLocaleString("ru-RU", {
+                                          day: "2-digit",
+                                          month: "2-digit",
+                                          year: "numeric",
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        })}
+                                      </Text>
+                                    </Group>
                                   )}
                                 </div>
                               </Group>
-                              <Group gap={4}>
-                                <Button
+                              <Group gap={4} wrap="nowrap">
+                                <ActionIcon
                                   variant="subtle"
-                                  size="xs"
+                                  color="blue"
+                                  size="lg"
                                   onClick={() => handleStartEdit(reminder)}
+                                  title="Редактировать"
                                 >
-                                  Редактировать
-                                </Button>
-                                <Button
+                                  <IconEdit size={18} />
+                                </ActionIcon>
+                                <ActionIcon
                                   variant="subtle"
-                                  size="xs"
                                   color="red"
+                                  size="lg"
                                   onClick={() => handleDeleteReminder(reminder.id)}
+                                  title="Удалить"
                                 >
-                                  Удалить
-                                </Button>
+                                  <IconTrash size={18} />
+                                </ActionIcon>
                               </Group>
                             </Group>
-                          </>
+                          </Stack>
                         )}
                       </Card>
                     );
@@ -496,9 +377,155 @@ export function RemindersPage() {
                 </Stack>
               </div>
             ))}
+            {groupedReminders.length === 0 && (
+              <Card radius="lg" padding="xl" style={{ textAlign: "center" }}>
+                <Stack gap="md" align="center">
+                  <IconNote size={48} style={{ color: "var(--mantine-color-gray-4)" }} />
+                  <Text c="dimmed" size="lg">
+                    Пока нет напоминаний
+                  </Text>
+                  <Text c="dimmed" size="sm">
+                    Нажмите кнопку ниже, чтобы создать первое напоминание
+                  </Text>
+                  <Button
+                    onClick={() => setFormModalOpened(true)}
+                    leftSection={<IconPlus size={18} />}
+                    variant="gradient"
+                    gradient={{ from: "blue", to: "cyan", deg: 90 }}
+                    mt="md"
+                  >
+                    Создать напоминание
+                  </Button>
+                </Stack>
+              </Card>
+            )}
           </Stack>
         </div>
       </div>
+
+      {/* Floating Action Button */}
+      <Button
+        className="reminders-page__fab"
+        onClick={() => setFormModalOpened(true)}
+        size="xl"
+        radius="xl"
+        variant="gradient"
+        gradient={{ from: "blue", to: "cyan", deg: 90 }}
+        leftSection={<IconPlus size={24} />}
+        style={{
+          position: "fixed",
+          bottom: 24,
+          right: 24,
+          zIndex: 1000,
+          boxShadow: "0 4px 12px rgba(34, 139, 230, 0.4)",
+        }}
+      >
+        Новое напоминание
+      </Button>
+
+      {/* Модальное окно с формой создания напоминания */}
+      <Modal
+        opened={formModalOpened}
+        onClose={() => {
+          setFormModalOpened(false);
+          setTitle("");
+          setRemindsAt("");
+          setContext("");
+        }}
+        title="Новое напоминание"
+        size="md"
+        centered
+        zIndex={10000}
+        overlayProps={{ opacity: 0.55, blur: 3 }}
+      >
+        <Stack gap="md">
+          <TextInput
+            label="Заголовок"
+            placeholder="Введите заголовок напоминания"
+            value={title}
+            onChange={(e) => setTitle(e.currentTarget.value)}
+            leftSection={<IconNote size={18} />}
+            size="md"
+            required
+            styles={{
+              label: {
+                fontWeight: 600,
+                marginBottom: 8,
+              },
+            }}
+          />
+
+          <Group gap="xs" align="flex-end" wrap="nowrap">
+            <Autocomplete
+              label="Контекст / тема"
+              placeholder="Например: Поездка в Стамбул"
+              value={context}
+              onChange={setContext}
+              data={contextsList}
+              leftSection={<IconTag size={18} />}
+              size="md"
+              style={{ flex: 1, minWidth: 0 }}
+              styles={{
+                label: {
+                  fontWeight: 600,
+                  marginBottom: 8,
+                },
+              }}
+            />
+            <ActionIcon
+              variant="light"
+              color="blue"
+              size="lg"
+              onClick={() => {
+                setContextsModalOpened(true);
+              }}
+              title="Управление контекстами"
+              style={{ marginBottom: 4, flexShrink: 0 }}
+            >
+              <IconSettings size={20} />
+            </ActionIcon>
+          </Group>
+
+          <TextInput
+            label="Когда напомнить"
+            type="datetime-local"
+            value={remindsAt}
+            onChange={(e) => setRemindsAt(e.currentTarget.value)}
+            leftSection={<IconCalendar size={18} />}
+            size="md"
+            styles={{
+              label: {
+                fontWeight: 600,
+                marginBottom: 8,
+              },
+            }}
+          />
+
+          <Group justify="flex-end" mt="md">
+            <Button
+              variant="subtle"
+              onClick={() => {
+                setFormModalOpened(false);
+                setTitle("");
+                setRemindsAt("");
+                setContext("");
+              }}
+            >
+              Отмена
+            </Button>
+            <Button
+              onClick={addNewReminder}
+              leftSection={<IconPlus size={18} />}
+              variant="gradient"
+              gradient={{ from: "blue", to: "cyan", deg: 90 }}
+              disabled={!title.trim()}
+            >
+              Создать
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
       <ContextsModal
         opened={contextsModalOpened}
         onClose={() => setContextsModalOpened(false)}

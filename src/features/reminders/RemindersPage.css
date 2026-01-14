@@ -1,13 +1,16 @@
 .reminders-page {
-  background: #f3f4f6;
-  padding: 32px 16px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+  min-height: 100vh;
+  width: 100%;
+  padding: 24px;
 }
 
 /* Двухколоночный лейаут */
 .reminders-page__container {
   margin: 0 auto;
+  max-width: 1200px;
   display: flex;
-  gap: 24px;
+  gap: 32px;
   align-items: flex-start;
 }
 
@@ -25,15 +28,180 @@
   flex-direction: column;
   gap: 12px;
   flex-grow: 1;
+  min-width: 0;
+  width: 100%;
+}
+
+/* Кнопка в заголовке (скрыта на мобильных) */
+.reminders-page__header-button {
+  display: block;
+}
+
+/* Floating Action Button (скрыта на десктопе) */
+.reminders-page__fab {
+  display: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.reminders-page__fab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(34, 139, 230, 0.5) !important;
+}
+
+.reminders-page__fab:active {
+  transform: translateY(0);
+}
+
+/* Группа напоминаний */
+.reminders-group {
+  margin-bottom: 8px;
+}
+
+.reminders-group__header {
+  padding: 8px 0;
+  border-bottom: 2px solid var(--mantine-color-blue-1);
+  margin-bottom: 16px;
+}
+
+/* Карточка напоминания */
+.reminder-card {
+  position: relative;
+  cursor: default;
+}
+
+.reminder-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--mantine-shadow-md) !important;
+  border-color: var(--mantine-color-blue-4) !important;
+}
+
+.reminder-card--done {
+  opacity: 0.85;
+}
+
+.reminder-card--done:hover {
+  transform: none;
+  border-color: var(--mantine-color-gray-3) !important;
+}
+
+.reminder-card--overdue {
+  border-left: 4px solid var(--mantine-color-red-5) !important;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(250, 82, 82, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(250, 82, 82, 0.1);
+  }
 }
 
 /* Адаптация под мобильные */
 @media (max-width: 768px) {
+  .reminders-page {
+    padding: 16px;
+  }
+
   .reminders-page__container {
     flex-direction: column;
+    gap: 20px;
+    width: 100%;
   }
 
   .reminders-page__right {
     width: 100%;
+  }
+
+  /* Скрываем кнопку в заголовке на мобильных */
+  .reminders-page__header-button {
+    display: none;
+  }
+
+  /* Показываем FAB на мобильных */
+  .reminders-page__fab {
+    display: block !important;
+    bottom: 20px !important;
+    right: 20px !important;
+    padding: 12px 20px !important;
+    font-size: 14px !important;
+  }
+
+  .reminders-page__fab .mantine-Button-leftSection {
+    margin-right: 8px;
+  }
+
+  .reminder-card {
+    padding: 12px !important;
+  }
+
+  .reminder-card:hover {
+    transform: none;
+  }
+
+  /* Уменьшаем размеры заголовков на мобильных */
+  .reminders-group__header {
+    margin-bottom: 12px;
+  }
+
+  /* Улучшаем отображение групп на мобильных */
+  .reminders-group {
+    margin-bottom: 16px;
+  }
+}
+
+/* Дополнительная адаптация для очень маленьких экранов */
+@media (max-width: 480px) {
+  .reminders-page {
+    padding: 12px;
+  }
+
+  .reminders-page__container {
+    gap: 16px;
+  }
+
+  /* Уменьшаем размеры текста в карточках напоминаний */
+  .reminder-card .mantine-Text-root {
+    font-size: 14px;
+  }
+
+  .reminders-page__fab {
+    bottom: 16px !important;
+    right: 16px !important;
+    width: 56px !important;
+    height: 56px !important;
+    border-radius: 50% !important;
+    padding: 0 !important;
+    min-width: 56px !important;
+    max-width: 56px !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  /* Скрываем текст на очень маленьких экранах - скрываем все кроме leftSection */
+  .reminders-page__fab > *:not(.mantine-Button-leftSection) {
+    display: none !important;
+  }
+  
+  /* Альтернативный способ - скрываем через font-size и overflow */
+  .reminders-page__fab {
+    font-size: 0 !important;
+    overflow: hidden !important;
+  }
+  
+  .reminders-page__fab .mantine-Button-leftSection {
+    font-size: initial !important;
+  }
+
+  .reminders-page__fab .mantine-Button-leftSection {
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+  }
+
+  .reminders-page__fab .mantine-Button-leftSection svg {
+    width: 24px !important;
+    height: 24px !important;
   }
 }
