@@ -56,6 +56,8 @@ export function RemindersPage() {
   const [editingContext, setEditingContext] = useState("");
   const [contextsModalOpened, setContextsModalOpened] = useState(false);
   const [formModalOpened, setFormModalOpened] = useState(false);
+  const [deleteConfirmOpened, setDeleteConfirmOpened] = useState(false);
+  const [reminderToDelete, setReminderToDelete] = useState<string | null>(null);
   const [contextsList, setContextsList] = useState<string[]>([]);
   const isSmallScreen = useMediaQuery("(max-width: 480px)");
   const { colorScheme } = useMantineColorScheme();
@@ -66,11 +68,25 @@ export function RemindersPage() {
     setContextsList(getAllContexts(reminders));
   }, [reminders]);
 
-  const handleDeleteReminder = (id: string) => {
-    setReminders(reminders.filter((r) => r.id !== id));
-    if (editingId === id) {
-      setEditingId(null);
+  const handleDeleteClick = (id: string) => {
+    setReminderToDelete(id);
+    setDeleteConfirmOpened(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (reminderToDelete) {
+      setReminders(reminders.filter((r) => r.id !== reminderToDelete));
+      if (editingId === reminderToDelete) {
+        setEditingId(null);
+      }
+      setDeleteConfirmOpened(false);
+      setReminderToDelete(null);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirmOpened(false);
+    setReminderToDelete(null);
   };
 
   const handleToggleStatus = (id: string) => {
@@ -214,18 +230,18 @@ export function RemindersPage() {
               Добавить
             </Button>
           </Group>
-          <Stack gap="lg" mt="sm">
+          <Stack gap="md" mt="sm">
             {groupedReminders.map(([groupName, groupReminders]) => (
               <div key={groupName || "__no_context__"} className="reminders-group">
                 {groupName && (
-                  <Group gap={8} mb="md" className="reminders-group__header">
-                    <IconTag size={18} color="var(--mantine-color-blue-6)" />
-                    <Text fw={600} size="md">
+                  <Group gap={6} mb="sm" className="reminders-group__header">
+                    <IconTag size={16} color="var(--mantine-color-blue-6)" />
+                    <Text fw={600} size="sm">
                       {groupName}
                     </Text>
                   </Group>
                 )}
-                <Stack gap="md">
+                <Stack gap="sm">
                   {groupReminders.map((reminder) => {
                     const isEditing = editingId === reminder.id;
                     const isDone = reminder.status === "done";
@@ -237,8 +253,8 @@ export function RemindersPage() {
                       <Card
                         key={reminder.id}
                         className={`reminder-card ${isDone ? "reminder-card--done" : ""} ${isOverdue ? "reminder-card--overdue" : ""}`}
-                        radius="lg"
-                        padding="md"
+                        radius="md"
+                        padding="sm"
                         withBorder
                         shadow="sm"
                         style={{
@@ -311,11 +327,11 @@ export function RemindersPage() {
                             </Group>
                           </Stack>
                         ) : (
-                          <Stack gap="sm">
+                          <Stack gap="xs">
                             <Group justify="space-between" align="flex-start" wrap="nowrap">
-                              <Group gap="md" align="flex-start" style={{ flex: 1 }} wrap="nowrap">
+                              <Group gap="sm" align="flex-start" style={{ flex: 1 }} wrap="nowrap">
                                 <Checkbox
-                                  size="md"
+                                  size="sm"
                                   checked={isDone}
                                   onChange={() => handleToggleStatus(reminder.id)}
                                   aria-label={
@@ -328,10 +344,10 @@ export function RemindersPage() {
                                   }}
                                 />
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                  <Group gap="xs" align="center" mb={4} wrap="nowrap">
+                                  <Group gap="xs" align="center" mb={2} wrap="nowrap">
                                     <Text
                                       fw={600}
-                                      size="md"
+                                      size="sm"
                                       c={isOverdue ? "red" : undefined}
                                       style={{
                                         textDecoration: isDone ? "line-through" : "none",
@@ -343,40 +359,41 @@ export function RemindersPage() {
                                     {isDone && (
                                       <Badge
                                         color="gray"
-                                        size="sm"
+                                        size="xs"
                                         variant="light"
-                                        leftSection={<IconCheck size={12} />}
+                                        leftSection={<IconCheck size={10} />}
                                       >
                                         Выполнено
                                       </Badge>
                                     )}
                                     {isOverdue && !isDone && (
-                                      <Badge color="red" size="sm" variant="light">
+                                      <Badge color="red" size="xs" variant="light">
                                         Просрочено
                                       </Badge>
                                     )}
                                   </Group>
                                   {reminder.description && (
                                     <Text
-                                      size="sm"
+                                      size="xs"
                                       c="dimmed"
                                       style={{
-                                        marginTop: 8,
+                                        marginTop: 4,
                                         whiteSpace: "pre-wrap",
                                         wordBreak: "break-word",
+                                        lineHeight: 1.4,
                                       }}
                                     >
                                       {reminder.description}
                                     </Text>
                                   )}
                                   {remindsAtDate && (
-                                    <Group gap={6} align="center" mt={reminder.description ? 8 : 0}>
+                                    <Group gap={4} align="center" mt={reminder.description ? 4 : 0}>
                                       <IconClock
-                                        size={14}
+                                        size={12}
                                         color={isOverdue ? "var(--mantine-color-red-6)" : undefined}
                                       />
                                       <Text
-                                        size="sm"
+                                        size="xs"
                                         c={isOverdue ? "red" : "dimmed"}
                                         fw={isOverdue ? 500 : 400}
                                       >
@@ -396,20 +413,20 @@ export function RemindersPage() {
                                 <ActionIcon
                                   variant="subtle"
                                   color="blue"
-                                  size="lg"
+                                  size="md"
                                   onClick={() => handleStartEdit(reminder)}
                                   title="Редактировать"
                                 >
-                                  <IconEdit size={18} />
+                                  <IconEdit size={16} />
                                 </ActionIcon>
                                 <ActionIcon
                                   variant="subtle"
                                   color="red"
-                                  size="lg"
-                                  onClick={() => handleDeleteReminder(reminder.id)}
+                                  size="md"
+                                  onClick={() => handleDeleteClick(reminder.id)}
                                   title="Удалить"
                                 >
-                                  <IconTrash size={18} />
+                                  <IconTrash size={16} />
                                 </ActionIcon>
                               </Group>
                             </Group>
@@ -626,6 +643,25 @@ export function RemindersPage() {
             </Button>
           </Group>
         </Stack>
+      </Modal>
+
+      {/* Модальное окно подтверждения удаления */}
+      <Modal
+        opened={deleteConfirmOpened}
+        onClose={handleDeleteCancel}
+        title="Удалить напоминание?"
+        centered
+        zIndex={10000}
+        overlayProps={{ opacity: 0.55, blur: 3 }}
+      >
+        <Group justify="flex-end" mt="md">
+          <Button variant="subtle" onClick={handleDeleteCancel}>
+            Отмена
+          </Button>
+          <Button color="red" onClick={handleDeleteConfirm}>
+            Удалить
+          </Button>
+        </Group>
       </Modal>
 
       <ContextsModal

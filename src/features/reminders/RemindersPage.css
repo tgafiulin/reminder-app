@@ -67,9 +67,9 @@ html[data-mantine-color-scheme="dark"] .reminders-page {
 }
 
 .reminders-group__header {
-  padding: 8px 0;
+  padding: 6px 0;
   border-bottom: 2px solid var(--mantine-color-blue-1);
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 body[data-mantine-color-scheme="dark"] .reminders-group__header {
@@ -161,7 +161,7 @@ body[data-mantine-color-scheme="dark"] .reminder-card--done:hover {
 
   /* Уменьшаем размеры заголовков на мобильных */
   .reminders-group__header {
-    margin-bottom: 12px;
+    margin-bottom: 10px;
   }
 
   /* Улучшаем отображение групп на мобильных */

@@ -38,7 +38,9 @@ body {
   min-height: 100vh;
   width: 100%;
   overflow-x: hidden;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 h1 {
@@ -61,7 +63,7 @@ button:hover {
 }
 button:focus,
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  outline: none;
 }
 
 /* Светлая тема (по умолчанию) */
@@ -92,4 +94,15 @@ body[data-mantine-color-scheme="dark"] a:hover {
 body[data-mantine-color-scheme="dark"] button {
   background-color: #1a1a1a;
   color: rgba(255, 255, 255, 0.87);
+}
+
+/* Убираем outline у кнопок Mantine */
+.mantine-Button-root:focus,
+.mantine-Button-root:focus-visible {
+  outline: none !important;
+}
+
+.mantine-ActionIcon-root:focus,
+.mantine-ActionIcon-root:focus-visible {
+  outline: none !important;
 }
