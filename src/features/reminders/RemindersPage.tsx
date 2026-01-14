@@ -28,7 +28,11 @@ import "./RemindersPage.css";
 import { loadReminders, saveReminders, getAllContexts } from "./api/storage";
 import { useReminderScheduler } from "./hooks/useReminderScheduler";
 import { ContextsModal } from "./ContextsModal";
-import { requestNotificationPermission, getNotificationPermission } from "./lib/notification";
+import {
+  requestNotificationPermission,
+  getNotificationPermission,
+  showNotification,
+} from "./lib/notification";
 
 export function RemindersPage() {
   const [reminders, setReminders] = useState<Reminder[]>(() => {
@@ -103,6 +107,13 @@ export function RemindersPage() {
   const handleDismissBanner = () => {
     setDismissedPermissionBanner(true);
     setShowPermissionBanner(false);
+  };
+
+  const handleTestNotification = async () => {
+    await showNotification({
+      title: "Тестовое уведомление",
+      body: "Это тестовое уведомление для проверки работы на телефоне",
+    });
   };
 
   const handleDeleteReminder = (id: string) => {
@@ -352,9 +363,18 @@ export function RemindersPage() {
               </Group>
             </Alert>
           )}
-          <Text fw={600} mb="xs">
-            Мои напоминания
-          </Text>
+          <Group justify="space-between" align="center" mb="xs">
+            <Text fw={600}>Мои напоминания</Text>
+            <Button
+              size="xs"
+              variant="light"
+              color="blue"
+              onClick={handleTestNotification}
+              leftSection={<IconBell size={16} />}
+            >
+              Тест уведомления
+            </Button>
+          </Group>
           <Stack gap="xs" mt="sm">
             {groupedReminders.map(([groupName, groupReminders]) => (
               <div key={groupName}>
