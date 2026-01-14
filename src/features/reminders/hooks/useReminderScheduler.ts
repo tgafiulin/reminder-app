@@ -17,10 +17,9 @@ export function useReminderScheduler(reminders: Reminder[]) {
     const now = new Date();
     const futureReminders = reminders
       .filter((r) => r.status !== "done")
-      .filter((r) => r.remindsAt)
       .map((r) => ({
         reminder: r,
-        delay: getDelayUntil(r.remindsAt!, now),
+        delay: getDelayUntil(r.remindsAt, now),
       }))
       .filter((x) => x.delay !== null) as { reminder: Reminder; delay: number }[];
 

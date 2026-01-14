@@ -2,62 +2,52 @@ import { useState, useMemo } from "react";
 import { Modal, Stack, TextInput, Button, Group, Text, ActionIcon, Divider } from "@mantine/core";
 import { IconEdit, IconTrash, IconPlus } from "@tabler/icons-react";
 import { loadContexts, addContext, removeContext, updateContext } from "./api/storage";
-import type { Reminder } from "./types";
+import type { ContextId } from "./types";
 
 interface ContextsModalProps {
   opened: boolean;
   onClose: () => void;
-  reminders: Reminder[];
   onContextUpdate: () => void;
-  onContextRenamed?: (oldContext: string, newContext: string) => void;
-  onContextDeleted?: (context: string) => void;
+  onContextDeleted?: (contextId: ContextId) => void;
 }
 
 export function ContextsModal({
   opened,
   onClose,
-  reminders,
   onContextUpdate,
-  onContextRenamed,
   onContextDeleted,
 }: ContextsModalProps) {
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<ContextId | null>(null);
   const [editingValue, setEditingValue] = useState("");
   const [newContext, setNewContext] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const contexts = useMemo(() => {
     if (!opened) return [];
-    const savedContexts = loadContexts();
-    const reminderContexts = reminders
-      .map((r) => r.context?.trim())
-      .filter((c): c is string => c !== undefined && c.length > 0);
-
-    return Array.from(new Set([...savedContexts, ...reminderContexts])).sort();
-  }, [opened, reminders]);
+    return loadContexts().sort((a, b) => a.name.localeCompare(b.name));
+  }, [opened, refreshKey]);
 
   const handleAddContext = () => {
     const trimmed = newContext.trim();
     if (trimmed.length > 0) {
       addContext(trimmed);
       setNewContext("");
+      setRefreshKey((prev) => prev + 1);
       onContextUpdate();
     }
   };
 
-  const handleStartEdit = (context: string) => {
-    setEditingId(context);
-    setEditingValue(context);
+  const handleStartEdit = (contextId: ContextId, contextName: string) => {
+    setEditingId(contextId);
+    setEditingValue(contextName);
   };
 
   const handleSaveEdit = () => {
     if (editingId && editingValue.trim().length > 0) {
-      const newContextValue = editingValue.trim();
-      if (editingId !== newContextValue) {
-        updateContext(editingId, newContextValue);
-        onContextRenamed?.(editingId, newContextValue);
-      }
+      updateContext(editingId, editingValue.trim());
       setEditingId(null);
       setEditingValue("");
+      setRefreshKey((prev) => prev + 1);
       onContextUpdate();
     }
   };
@@ -67,9 +57,10 @@ export function ContextsModal({
     setEditingValue("");
   };
 
-  const handleDeleteContext = (context: string) => {
-    removeContext(context);
-    onContextDeleted?.(context);
+  const handleDeleteContext = (contextId: ContextId) => {
+    removeContext(contextId);
+    onContextDeleted?.(contextId);
+    setRefreshKey((prev) => prev + 1);
     onContextUpdate();
   };
 
@@ -126,8 +117,8 @@ export function ContextsModal({
           ) : (
             <Stack gap="xs">
               {contexts.map((context) => (
-                <Group key={context} justify="space-between" gap="xs">
-                  {editingId === context ? (
+                <Group key={context.id} justify="space-between" gap="xs">
+                  {editingId === context.id ? (
                     <>
                       <TextInput
                         value={editingValue}
@@ -153,19 +144,19 @@ export function ContextsModal({
                     </>
                   ) : (
                     <>
-                      <Text style={{ flex: 1 }}>{context}</Text>
+                      <Text style={{ flex: 1 }}>{context.name}</Text>
                       <Group gap={4}>
                         <ActionIcon
                           color="blue"
                           variant="light"
-                          onClick={() => handleStartEdit(context)}
+                          onClick={() => handleStartEdit(context.id, context.name)}
                         >
                           <IconEdit size={16} />
                         </ActionIcon>
                         <ActionIcon
                           color="red"
                           variant="light"
-                          onClick={() => handleDeleteContext(context)}
+                          onClick={() => handleDeleteContext(context.id)}
                         >
                           <IconTrash size={16} />
                         </ActionIcon>

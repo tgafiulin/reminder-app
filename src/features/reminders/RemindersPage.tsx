@@ -13,6 +13,7 @@ import {
   ActionIcon,
   Title,
   Modal,
+  Select,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { useMantineColorScheme } from "@mantine/core";
@@ -26,13 +27,22 @@ import {
   IconEdit,
   IconTrash,
   IconCheck,
+  IconSearch,
 } from "@tabler/icons-react";
 import type { Reminder } from "./types";
 
 import "./RemindersPage.css";
-import { loadReminders, saveReminders, getAllContexts } from "./api/storage";
+import {
+  loadReminders,
+  saveReminders,
+  loadContexts,
+  addContext,
+  getContextById,
+} from "./api/storage";
 import { useReminderScheduler } from "./hooks/useReminderScheduler";
 import { ContextsModal } from "./ContextsModal";
+import { isOverdue as isReminderOverdue } from "./lib/time";
+import type { ContextId } from "./types";
 
 export function RemindersPage() {
   const [reminders, setReminders] = useState<Reminder[]>(() => {
@@ -48,25 +58,27 @@ export function RemindersPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [remindsAt, setRemindsAt] = useState("");
-  const [context, setContext] = useState("");
+  const [contextName, setContextName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [editingDescription, setEditingDescription] = useState("");
   const [editingRemindsAt, setEditingRemindsAt] = useState("");
-  const [editingContext, setEditingContext] = useState("");
+  const [editingContextName, setEditingContextName] = useState("");
   const [contextsModalOpened, setContextsModalOpened] = useState(false);
   const [formModalOpened, setFormModalOpened] = useState(false);
   const [deleteConfirmOpened, setDeleteConfirmOpened] = useState(false);
   const [reminderToDelete, setReminderToDelete] = useState<string | null>(null);
-  const [contextsList, setContextsList] = useState<string[]>([]);
+  const [contextsList, setContextsList] = useState<string[]>(() => {
+    const contexts = loadContexts();
+    return contexts.map((c) => c.name);
+  });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "done" | "overdue">("active");
   const isSmallScreen = useMediaQuery("(max-width: 480px)");
+  const isMobileScreen = useMediaQuery("(max-width: 768px)");
   const { colorScheme } = useMantineColorScheme();
 
   useReminderScheduler(reminders);
-
-  useEffect(() => {
-    setContextsList(getAllContexts(reminders));
-  }, [reminders]);
 
   const handleDeleteClick = (id: string) => {
     setReminderToDelete(id);
@@ -104,11 +116,24 @@ export function RemindersPage() {
 
   const addNewReminder = () => {
     if (title.trim().length === 0) return;
-    let remindsAtIso: string | undefined = undefined;
-    if (remindsAt.trim()) {
-      const date = new Date(remindsAt);
-      if (!Number.isNaN(date.getTime())) {
-        remindsAtIso = date.toISOString();
+    if (!remindsAt.trim()) return; // Дата обязательна
+
+    const date = new Date(remindsAt);
+    if (Number.isNaN(date.getTime())) return; // Невалидная дата
+
+    const remindsAtIso = date.toISOString();
+
+    // Найти или создать контекст
+    let contextId: ContextId | undefined = undefined;
+    if (contextName.trim()) {
+      const contexts = loadContexts();
+      const existingContext = contexts.find((c) => c.name === contextName.trim());
+      if (existingContext) {
+        contextId = existingContext.id;
+      } else {
+        contextId = addContext(contextName.trim());
+        const updatedContexts = loadContexts();
+        setContextsList(updatedContexts.map((c) => c.name));
       }
     }
 
@@ -118,7 +143,7 @@ export function RemindersPage() {
       description: description.trim() || undefined,
       remindsAt: remindsAtIso,
       status: "active",
-      context: context.trim() || undefined,
+      contextId,
     };
 
     const updatedRemiders = [...reminders, newReminder];
@@ -127,7 +152,7 @@ export function RemindersPage() {
     setTitle("");
     setDescription("");
     setRemindsAt("");
-    setContext("");
+    setContextName("");
     setFormModalOpened(false);
   };
 
@@ -135,16 +160,13 @@ export function RemindersPage() {
     setEditingId(reminder.id);
     setEditingTitle(reminder.title);
     setEditingDescription(reminder.description ?? "");
-    setEditingContext(reminder.context ?? "");
-    if (reminder.remindsAt) {
-      const date = new Date(reminder.remindsAt);
-      const localISO = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-        .toISOString()
-        .slice(0, 16);
-      setEditingRemindsAt(localISO);
-    } else {
-      setEditingRemindsAt("");
-    }
+    const contextName = reminder.contextId ? (getContextById(reminder.contextId)?.name ?? "") : "";
+    setEditingContextName(contextName);
+    const date = new Date(reminder.remindsAt);
+    const localISO = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+    setEditingRemindsAt(localISO);
   };
 
   const handleCancelEdit = () => {
@@ -155,12 +177,28 @@ export function RemindersPage() {
     if (editingTitle.trim().length === 0) {
       return;
     }
+    if (!editingRemindsAt.trim()) {
+      return; // Дата обязательна
+    }
 
-    let remindsAtIso: string | undefined = undefined;
-    if (editingRemindsAt.trim()) {
-      const date = new Date(editingRemindsAt);
-      if (!Number.isNaN(date.getTime())) {
-        remindsAtIso = date.toISOString();
+    const date = new Date(editingRemindsAt);
+    if (Number.isNaN(date.getTime())) {
+      return; // Невалидная дата
+    }
+
+    const remindsAtIso = date.toISOString();
+
+    // Найти или создать контекст
+    let contextId: ContextId | undefined = undefined;
+    if (editingContextName.trim()) {
+      const contexts = loadContexts();
+      const existingContext = contexts.find((c) => c.name === editingContextName.trim());
+      if (existingContext) {
+        contextId = existingContext.id;
+      } else {
+        contextId = addContext(editingContextName.trim());
+        const updatedContexts = loadContexts();
+        setContextsList(updatedContexts.map((c) => c.name));
       }
     }
 
@@ -172,7 +210,7 @@ export function RemindersPage() {
               title: editingTitle.trim(),
               description: editingDescription.trim() || undefined,
               remindsAt: remindsAtIso,
-              context: editingContext.trim() || undefined,
+              contextId,
             }
           : r
       )
@@ -184,10 +222,45 @@ export function RemindersPage() {
     saveReminders(reminders);
   }, [reminders]);
 
-  // Группировка напоминаний по контексту
+  const handleOpenFormModal = () => {
+    const contexts = loadContexts();
+    setContextsList(contexts.map((c) => c.name));
+    setFormModalOpened(true);
+  };
+
+  // Фильтрация напоминаний по поисковому запросу и статусу
+  const now = new Date();
+  const filteredReminders = reminders.filter((reminder) => {
+    // Фильтр по поисковому запросу
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      const title = reminder.title.toLowerCase();
+      if (!title.includes(query)) return false;
+    }
+
+    // Фильтр по статусу
+    const isDone = reminder.status === "done";
+    const reminderIsOverdue = isReminderOverdue(reminder.remindsAt, isDone, now);
+
+    switch (statusFilter) {
+      case "all":
+        return true;
+      case "active":
+        return !isDone && !reminderIsOverdue;
+      case "done":
+        return isDone;
+      case "overdue":
+        return reminderIsOverdue;
+      default:
+        return true;
+    }
+  });
+
+  // Группировка напоминаний по контексту с сортировкой по дате
+  const contexts = loadContexts();
   const groupedReminders = Array.from(
-    reminders.reduce<Map<string, Reminder[]>>((map, reminder) => {
-      const key = reminder.context?.trim() || "";
+    filteredReminders.reduce<Map<ContextId | "", Reminder[]>>((map, reminder) => {
+      const key = reminder.contextId || "";
       const existing = map.get(key);
       if (existing) {
         existing.push(reminder);
@@ -196,12 +269,26 @@ export function RemindersPage() {
       }
       return map;
     }, new Map())
-  ).sort(([a], [b]) => {
-    // Группы без контекста (пустая строка) идут первыми
-    if (a === "") return -1;
-    if (b === "") return 1;
-    return a.localeCompare(b, undefined, { sensitivity: "base" });
-  });
+  )
+    .map(([contextId, reminders]) => {
+      const context = contextId ? contexts.find((c) => c.id === contextId) : undefined;
+      const groupName = context?.name || "";
+      return [
+        groupName,
+        [...reminders].sort((a, b) => {
+          // Сортировка по дате: ближайшие сначала
+          const dateA = new Date(a.remindsAt).getTime();
+          const dateB = new Date(b.remindsAt).getTime();
+          return dateA - dateB;
+        }),
+      ] as [string, Reminder[]];
+    })
+    .sort(([a], [b]) => {
+      // Группы без контекста (пустая строка) идут первыми
+      if (a === "") return -1;
+      if (b === "") return 1;
+      return a.localeCompare(b, undefined, { sensitivity: "base" });
+    });
 
   return (
     <div
@@ -221,7 +308,7 @@ export function RemindersPage() {
             </Title>
             <Button
               className="reminders-page__header-button"
-              onClick={() => setFormModalOpened(true)}
+              onClick={handleOpenFormModal}
               leftSection={<IconPlus size={18} />}
               variant="gradient"
               gradient={{ from: "blue", to: "cyan", deg: 90 }}
@@ -230,6 +317,55 @@ export function RemindersPage() {
               Добавить
             </Button>
           </Group>
+          {isMobileScreen ? (
+            <Stack gap="md" mb="md">
+              <TextInput
+                placeholder="Поиск по названию..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.currentTarget.value)}
+                leftSection={<IconSearch size={18} />}
+                size="md"
+              />
+              <Select
+                value={statusFilter}
+                onChange={(value) =>
+                  setStatusFilter(value as "all" | "active" | "done" | "overdue")
+                }
+                data={[
+                  { value: "all", label: "Все" },
+                  { value: "active", label: "Активные" },
+                  { value: "done", label: "Выполненные" },
+                  { value: "overdue", label: "Просроченные" },
+                ]}
+                size="md"
+              />
+            </Stack>
+          ) : (
+            <Group gap="md" mb="md">
+              <TextInput
+                placeholder="Поиск по названию..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.currentTarget.value)}
+                leftSection={<IconSearch size={18} />}
+                size="md"
+                style={{ flex: 1 }}
+              />
+              <Select
+                value={statusFilter}
+                onChange={(value) =>
+                  setStatusFilter(value as "all" | "active" | "done" | "overdue")
+                }
+                data={[
+                  { value: "all", label: "Все" },
+                  { value: "active", label: "Активные" },
+                  { value: "done", label: "Выполненные" },
+                  { value: "overdue", label: "Просроченные" },
+                ]}
+                size="md"
+                style={{ width: 180 }}
+              />
+            </Group>
+          )}
           <Stack gap="md" mt="sm">
             {groupedReminders.map(([groupName, groupReminders]) => (
               <div key={groupName || "__no_context__"} className="reminders-group">
@@ -245,9 +381,8 @@ export function RemindersPage() {
                   {groupReminders.map((reminder) => {
                     const isEditing = editingId === reminder.id;
                     const isDone = reminder.status === "done";
-                    const remindsAtDate = reminder.remindsAt ? new Date(reminder.remindsAt) : null;
-                    const isOverdue =
-                      remindsAtDate && !isDone && remindsAtDate.getTime() < Date.now();
+                    const remindsAtDate = new Date(reminder.remindsAt);
+                    const isOverdue = !isDone && remindsAtDate.getTime() < Date.now();
 
                     return (
                       <Card
@@ -296,8 +431,8 @@ export function RemindersPage() {
                             <Group gap="xs" align="flex-end">
                               <Autocomplete
                                 label="Контекст / тема"
-                                value={editingContext}
-                                onChange={setEditingContext}
+                                value={editingContextName}
+                                onChange={setEditingContextName}
                                 data={contextsList}
                                 style={{ flex: 1 }}
                                 leftSection={<IconTag size={18} />}
@@ -316,6 +451,7 @@ export function RemindersPage() {
                               value={editingRemindsAt}
                               onChange={(e) => setEditingRemindsAt(e.currentTarget.value)}
                               leftSection={<IconCalendar size={18} />}
+                              required
                             />
                             <Group justify="flex-end" mt="xs">
                               <Button variant="subtle" size="sm" onClick={handleCancelEdit}>
@@ -449,7 +585,7 @@ export function RemindersPage() {
                     Нажмите кнопку ниже, чтобы создать первое напоминание
                   </Text>
                   <Button
-                    onClick={() => setFormModalOpened(true)}
+                    onClick={handleOpenFormModal}
                     leftSection={<IconPlus size={18} />}
                     variant="gradient"
                     gradient={{ from: "blue", to: "cyan", deg: 90 }}
@@ -468,7 +604,7 @@ export function RemindersPage() {
       {isSmallScreen ? (
         <Button
           className="reminders-page__fab"
-          onClick={() => setFormModalOpened(true)}
+          onClick={handleOpenFormModal}
           size="xl"
           radius="xl"
           variant="gradient"
@@ -506,7 +642,7 @@ export function RemindersPage() {
       ) : (
         <Button
           className="reminders-page__fab"
-          onClick={() => setFormModalOpened(true)}
+          onClick={handleOpenFormModal}
           size="xl"
           radius="xl"
           variant="gradient"
@@ -532,7 +668,7 @@ export function RemindersPage() {
           setTitle("");
           setDescription("");
           setRemindsAt("");
-          setContext("");
+          setContextName("");
         }}
         title="Новое напоминание"
         size="md"
@@ -577,8 +713,8 @@ export function RemindersPage() {
             <Autocomplete
               label="Контекст / тема"
               placeholder="Например: Поездка в Стамбул"
-              value={context}
-              onChange={setContext}
+              value={contextName}
+              onChange={setContextName}
               data={contextsList}
               leftSection={<IconTag size={18} />}
               size="md"
@@ -611,6 +747,7 @@ export function RemindersPage() {
             onChange={(e) => setRemindsAt(e.currentTarget.value)}
             leftSection={<IconCalendar size={18} />}
             size="md"
+            required
             styles={{
               label: {
                 fontWeight: 600,
@@ -627,7 +764,7 @@ export function RemindersPage() {
                 setTitle("");
                 setDescription("");
                 setRemindsAt("");
-                setContext("");
+                setContextName("");
               }}
             >
               Отмена
@@ -666,21 +803,18 @@ export function RemindersPage() {
 
       <ContextsModal
         opened={contextsModalOpened}
-        onClose={() => setContextsModalOpened(false)}
-        reminders={reminders}
+        onClose={() => {
+          setContextsModalOpened(false);
+          const contexts = loadContexts();
+          setContextsList(contexts.map((c) => c.name));
+        }}
         onContextUpdate={() => {
-          setContextsList(getAllContexts(reminders));
+          const contexts = loadContexts();
+          setContextsList(contexts.map((c) => c.name));
         }}
-        onContextRenamed={(oldContext, newContext) => {
+        onContextDeleted={(deletedContextId) => {
           setReminders((prev) =>
-            prev.map((r) => (r.context?.trim() === oldContext ? { ...r, context: newContext } : r))
-          );
-        }}
-        onContextDeleted={(deletedContext) => {
-          setReminders((prev) =>
-            prev.map((r) =>
-              r.context?.trim() === deletedContext ? { ...r, context: undefined } : r
-            )
+            prev.map((r) => (r.contextId === deletedContextId ? { ...r, contextId: undefined } : r))
           );
         }}
       />

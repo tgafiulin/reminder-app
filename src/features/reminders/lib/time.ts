@@ -11,3 +11,10 @@ export function getDelayUntil(remindsAt: string, now: Date = new Date()): number
 
   return diff; // миллисекунды до события
 }
+
+export function isOverdue(remindsAt: string, isDone: boolean, now: Date = new Date()): boolean {
+  if (isDone) return false;
+  const targetTime = new Date(remindsAt).getTime();
+  if (Number.isNaN(targetTime)) return false;
+  return targetTime < now.getTime();
+}

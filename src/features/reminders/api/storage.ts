@@ -1,7 +1,7 @@
 export const REMINDERS_STORAGE_KEY = "remindy:reminders";
 export const CONTEXTS_STORAGE_KEY = "remindy:contexts";
 
-import type { Reminder } from "../types";
+import type { Reminder, Context, ContextId } from "../types";
 
 export function loadReminders(): Reminder[] {
   const remindersJSON = localStorage.getItem(REMINDERS_STORAGE_KEY);
@@ -26,65 +26,67 @@ export function saveReminders(reminders: Reminder[]): void {
 }
 
 // Функции для работы с контекстами
-export function loadContexts(): string[] {
+export function loadContexts(): Context[] {
   const contextsJSON = localStorage.getItem(CONTEXTS_STORAGE_KEY);
   if (!contextsJSON) return [];
 
   try {
     const parsed = JSON.parse(contextsJSON);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((c): c is string => typeof c === "string" && c.trim().length > 0);
+    return parsed.filter(
+      (c): c is Context =>
+        typeof c === "object" &&
+        c !== null &&
+        typeof c.id === "string" &&
+        typeof c.name === "string" &&
+        c.name.trim().length > 0
+    );
   } catch {
     return [];
   }
 }
 
-export function saveContexts(contexts: string[]): void {
+export function saveContexts(contexts: Context[]): void {
   try {
-    const uniqueContexts = Array.from(
-      new Set(contexts.map((c) => c.trim()).filter((c) => c.length > 0))
-    );
-    const json = JSON.stringify(uniqueContexts);
+    const json = JSON.stringify(contexts);
     localStorage.setItem(CONTEXTS_STORAGE_KEY, json);
   } catch (e) {
     console.error(e);
   }
 }
 
-export function addContext(context: string): void {
+export function addContext(name: string): ContextId {
   const contexts = loadContexts();
-  const trimmed = context.trim();
-  if (trimmed.length > 0 && !contexts.includes(trimmed)) {
-    contexts.push(trimmed);
+  const trimmed = name.trim();
+  if (trimmed.length > 0) {
+    const id = `context_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const newContext: Context = { id, name: trimmed };
+    contexts.push(newContext);
     saveContexts(contexts);
+    return id;
   }
+  return "";
 }
 
-export function removeContext(context: string): void {
+export function removeContext(contextId: ContextId): void {
   const contexts = loadContexts();
-  const filtered = contexts.filter((c) => c !== context);
+  const filtered = contexts.filter((c) => c.id !== contextId);
   saveContexts(filtered);
 }
 
-export function updateContext(oldContext: string, newContext: string): void {
+export function updateContext(contextId: ContextId, newName: string): void {
   const contexts = loadContexts();
-  const index = contexts.indexOf(oldContext);
-  if (index !== -1) {
-    const trimmed = newContext.trim();
+  const context = contexts.find((c) => c.id === contextId);
+  if (context) {
+    const trimmed = newName.trim();
     if (trimmed.length > 0) {
-      contexts[index] = trimmed;
+      context.name = trimmed;
       saveContexts(contexts);
     }
   }
 }
 
-// Получить все уникальные контексты из напоминаний и сохраненных контекстов
-export function getAllContexts(reminders: Reminder[]): string[] {
-  const savedContexts = loadContexts();
-  const reminderContexts = reminders
-    .map((r) => r.context?.trim())
-    .filter((c): c is string => c !== undefined && c.length > 0);
-
-  const allContexts = new Set([...savedContexts, ...reminderContexts]);
-  return Array.from(allContexts).sort();
+export function getContextById(contextId: ContextId): Context | undefined {
+  const contexts = loadContexts();
+  return contexts.find((c) => c.id === contextId);
 }
