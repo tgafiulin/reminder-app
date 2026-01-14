@@ -3,6 +3,13 @@
   min-height: 100vh;
   width: 100%;
   padding: 24px;
+  transition: background 0.3s ease;
+}
+
+[data-mantine-color-scheme="dark"] .reminders-page,
+body[data-mantine-color-scheme="dark"] .reminders-page,
+html[data-mantine-color-scheme="dark"] .reminders-page {
+  background: linear-gradient(135deg, #1a1b1e 0%, #25262b 100%) !important;
 }
 
 /* Двухколоночный лейаут */
@@ -65,10 +72,15 @@
   margin-bottom: 16px;
 }
 
+body[data-mantine-color-scheme="dark"] .reminders-group__header {
+  border-bottom-color: var(--mantine-color-blue-8);
+}
+
 /* Карточка напоминания */
 .reminder-card {
   position: relative;
   cursor: default;
+  transition: all 0.2s ease;
 }
 
 .reminder-card:hover {
@@ -84,6 +96,10 @@
 .reminder-card--done:hover {
   transform: none;
   border-color: var(--mantine-color-gray-3) !important;
+}
+
+body[data-mantine-color-scheme="dark"] .reminder-card--done:hover {
+  border-color: var(--mantine-color-gray-7) !important;
 }
 
 .reminder-card--overdue {

@@ -14,6 +14,7 @@ import {
   Modal,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
+import { useMantineColorScheme } from "@mantine/core";
 import {
   IconSettings,
   IconPlus,
@@ -54,6 +55,7 @@ export function RemindersPage() {
   const [formModalOpened, setFormModalOpened] = useState(false);
   const [contextsList, setContextsList] = useState<string[]>([]);
   const isSmallScreen = useMediaQuery("(max-width: 480px)");
+  const { colorScheme } = useMantineColorScheme();
 
   useReminderScheduler(reminders);
 
@@ -179,11 +181,19 @@ export function RemindersPage() {
   });
 
   return (
-    <div className="reminders-page">
+    <div
+      className="reminders-page"
+      style={{
+        background:
+          colorScheme === "dark"
+            ? "linear-gradient(135deg, #1a1b1e 0%, #25262b 100%)"
+            : "linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%)",
+      }}
+    >
       <div className="reminders-page__container">
         <div className="reminders-page__right">
           <Group justify="space-between" align="center" mb="md" wrap="wrap">
-            <Title order={2} fw={700} c="dark.8">
+            <Title order={2} fw={700}>
               Мои напоминания
             </Title>
             <Button
@@ -202,8 +212,8 @@ export function RemindersPage() {
               <div key={groupName || "__no_context__"} className="reminders-group">
                 {groupName && (
                   <Group gap={8} mb="md" className="reminders-group__header">
-                    <IconTag size={18} style={{ color: "var(--mantine-color-blue-6)" }} />
-                    <Text fw={600} size="md" c="dark.7">
+                    <IconTag size={18} color="var(--mantine-color-blue-6)" />
+                    <Text fw={600} size="md">
                       {groupName}
                     </Text>
                   </Group>
@@ -227,13 +237,21 @@ export function RemindersPage() {
                         style={{
                           transition: "all 0.2s ease",
                           background: isDone
-                            ? "linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)"
-                            : "linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)",
+                            ? colorScheme === "dark"
+                              ? "linear-gradient(135deg, #2c2e33 0%, #25262b 100%)"
+                              : "linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)"
+                            : colorScheme === "dark"
+                              ? "linear-gradient(135deg, #25262b 0%, #1a1b1e 100%)"
+                              : "linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)",
                           borderColor: isOverdue
                             ? "var(--mantine-color-red-3)"
                             : isDone
-                              ? "var(--mantine-color-gray-3)"
-                              : "var(--mantine-color-gray-2)",
+                              ? colorScheme === "dark"
+                                ? "var(--mantine-color-gray-7)"
+                                : "var(--mantine-color-gray-3)"
+                              : colorScheme === "dark"
+                                ? "var(--mantine-color-gray-8)"
+                                : "var(--mantine-color-gray-2)",
                         }}
                       >
                         {isEditing ? (
@@ -299,10 +317,10 @@ export function RemindersPage() {
                                     <Text
                                       fw={600}
                                       size="md"
+                                      c={isOverdue ? "red" : undefined}
                                       style={{
                                         textDecoration: isDone ? "line-through" : "none",
                                         opacity: isDone ? 0.6 : 1,
-                                        color: isOverdue ? "var(--mantine-color-red-7)" : undefined,
                                       }}
                                     >
                                       {reminder.title}
@@ -327,11 +345,7 @@ export function RemindersPage() {
                                     <Group gap={6} align="center">
                                       <IconClock
                                         size={14}
-                                        style={{
-                                          color: isOverdue
-                                            ? "var(--mantine-color-red-6)"
-                                            : "var(--mantine-color-gray-6)",
-                                        }}
+                                        color={isOverdue ? "var(--mantine-color-red-6)" : undefined}
                                       />
                                       <Text
                                         size="sm"
@@ -382,7 +396,7 @@ export function RemindersPage() {
             {groupedReminders.length === 0 && (
               <Card radius="lg" padding="xl" style={{ textAlign: "center" }}>
                 <Stack gap="md" align="center">
-                  <IconNote size={48} style={{ color: "var(--mantine-color-gray-4)" }} />
+                  <IconNote size={48} style={{ opacity: 0.5 }} />
                   <Text c="dimmed" size="lg">
                     Пока нет напоминаний
                   </Text>

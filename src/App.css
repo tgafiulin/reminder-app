@@ -15,6 +15,14 @@
   position: sticky;
   top: 0;
   z-index: 100;
+  transition: box-shadow 0.3s ease, background 0.3s ease;
+}
+
+[data-mantine-color-scheme="dark"] .app-header,
+body[data-mantine-color-scheme="dark"] .app-header,
+html[data-mantine-color-scheme="dark"] .app-header {
+  background: linear-gradient(135deg, #1c5f99 0%, #164d7a 100%) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .app-title {
@@ -81,4 +89,8 @@
 
 .read-the-docs {
   color: #888;
+}
+
+body[data-mantine-color-scheme="dark"] .read-the-docs {
+  color: #999;
 }
