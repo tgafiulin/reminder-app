@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   TextInput,
+  Textarea,
   Button,
   Stack,
   Group,
@@ -45,10 +46,12 @@ export function RemindersPage() {
       : [];
   });
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [remindsAt, setRemindsAt] = useState("");
   const [context, setContext] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [editingDescription, setEditingDescription] = useState("");
   const [editingRemindsAt, setEditingRemindsAt] = useState("");
   const [editingContext, setEditingContext] = useState("");
   const [contextsModalOpened, setContextsModalOpened] = useState(false);
@@ -96,6 +99,7 @@ export function RemindersPage() {
     const newReminder: Reminder = {
       id: crypto.randomUUID(),
       title: title.trim(),
+      description: description.trim() || undefined,
       remindsAt: remindsAtIso,
       status: "active",
       context: context.trim() || undefined,
@@ -105,6 +109,7 @@ export function RemindersPage() {
 
     setReminders(updatedRemiders);
     setTitle("");
+    setDescription("");
     setRemindsAt("");
     setContext("");
     setFormModalOpened(false);
@@ -113,6 +118,7 @@ export function RemindersPage() {
   const handleStartEdit = (reminder: Reminder) => {
     setEditingId(reminder.id);
     setEditingTitle(reminder.title);
+    setEditingDescription(reminder.description ?? "");
     setEditingContext(reminder.context ?? "");
     if (reminder.remindsAt) {
       const date = new Date(reminder.remindsAt);
@@ -148,6 +154,7 @@ export function RemindersPage() {
           ? {
               ...r,
               title: editingTitle.trim(),
+              description: editingDescription.trim() || undefined,
               remindsAt: remindsAtIso,
               context: editingContext.trim() || undefined,
             }
@@ -262,6 +269,14 @@ export function RemindersPage() {
                               onChange={(e) => setEditingTitle(e.currentTarget.value)}
                               leftSection={<IconNote size={18} />}
                             />
+                            <Textarea
+                              label="Описание"
+                              placeholder="Дополнительная информация (необязательно)"
+                              value={editingDescription}
+                              onChange={(e) => setEditingDescription(e.currentTarget.value)}
+                              minRows={3}
+                              maxRows={6}
+                            />
                             <Group gap="xs" align="flex-end">
                               <Autocomplete
                                 label="Контекст / тема"
@@ -341,8 +356,21 @@ export function RemindersPage() {
                                       </Badge>
                                     )}
                                   </Group>
+                                  {reminder.description && (
+                                    <Text
+                                      size="sm"
+                                      c="dimmed"
+                                      style={{
+                                        marginTop: 8,
+                                        whiteSpace: "pre-wrap",
+                                        wordBreak: "break-word",
+                                      }}
+                                    >
+                                      {reminder.description}
+                                    </Text>
+                                  )}
                                   {remindsAtDate && (
-                                    <Group gap={6} align="center">
+                                    <Group gap={6} align="center" mt={reminder.description ? 8 : 0}>
                                       <IconClock
                                         size={14}
                                         color={isOverdue ? "var(--mantine-color-red-6)" : undefined}
@@ -485,6 +513,7 @@ export function RemindersPage() {
         onClose={() => {
           setFormModalOpened(false);
           setTitle("");
+          setDescription("");
           setRemindsAt("");
           setContext("");
         }}
@@ -503,6 +532,22 @@ export function RemindersPage() {
             leftSection={<IconNote size={18} />}
             size="md"
             required
+            styles={{
+              label: {
+                fontWeight: 600,
+                marginBottom: 8,
+              },
+            }}
+          />
+
+          <Textarea
+            label="Описание"
+            placeholder="Дополнительная информация (необязательно)"
+            value={description}
+            onChange={(e) => setDescription(e.currentTarget.value)}
+            size="md"
+            minRows={3}
+            maxRows={6}
             styles={{
               label: {
                 fontWeight: 600,
@@ -563,6 +608,7 @@ export function RemindersPage() {
               onClick={() => {
                 setFormModalOpened(false);
                 setTitle("");
+                setDescription("");
                 setRemindsAt("");
                 setContext("");
               }}
