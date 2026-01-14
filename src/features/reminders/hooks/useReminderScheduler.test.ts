@@ -31,7 +31,12 @@ describe("useReminderScheduler", () => {
 
   it("вызывает showNotification для ближайшего напоминания", () => {
     const reminders: Reminder[] = [
-      { id: "1", title: "без даты", status: "active" },
+      {
+        id: "1",
+        title: "без даты",
+        remindsAt: "2026-01-02T11:00:00.000Z",
+        status: "active",
+      },
       {
         id: "2",
         title: "через 5 минут",
@@ -61,7 +66,12 @@ describe("useReminderScheduler", () => {
 
   it("не ставит таймер если нет будущих напоминаний", () => {
     const reminders: Reminder[] = [
-      { id: "1", title: "без даты", status: "active" },
+      {
+        id: "1",
+        title: "без даты",
+        remindsAt: "2026-01-02T11:00:00.000Z",
+        status: "active",
+      },
       {
         id: "2",
         title: "в прошлом",
